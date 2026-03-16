@@ -13,7 +13,7 @@ services:
       - DB_PORT=5432
       - DB_USER=postgres
       - DB_PASSWORD=postgres
-      - DB_NAME=myapp
+      - DB_NAME=unilly
 
   db:
     image: postgres:16
@@ -24,7 +24,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: myapp
+      POSTGRES_DB: unilly
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
