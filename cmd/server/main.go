@@ -19,11 +19,7 @@ func main() {
 	}
 	database.AutoMigrate(&models.User{})
 	fmt.Println("Database connection established:", database)
-    r.GET("/", func(c *gin.Context) {
-        
-        c.String(200, "Hello, World!")
-    })
-	
+
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
