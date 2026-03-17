@@ -1,24 +1,25 @@
 package main
 
 import (
+	"context"
 	"fmt"
-	"log"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/unilly-api/db"
-	"github.com/unilly-api/models"
-	"github.com/gin-contrib/cors"
 	"github.com/unilly-api/routes"
 )
 
 func main() {
-    r := gin.Default()
-	database, err := db.NewDB()
+	r := gin.Default()
+	ctx := context.Background()
+
+	db, err := db.NewDB(ctx)
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
-	database.AutoMigrate(&models.User{})
-	fmt.Println("Database connection established:", database)
+	defer db.Close()
+	fmt.Println("Database connection established:", db)
 
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},

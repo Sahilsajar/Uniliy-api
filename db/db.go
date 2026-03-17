@@ -1,35 +1,64 @@
 package db
 
 import (
+	"context"
 	"fmt"
+	"log"
 	"os"
+	"time"
 
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func NewDB() (*gorm.DB, error) {
+func NewDB(ctx context.Context) (*pgxpool.Pool, error) {
+	dsn := buildDSN()
 
-	host := os.Getenv("DB_HOST")
-	port := os.Getenv("DB_PORT")
-	user := os.Getenv("DB_USER")
-	password := os.Getenv("DB_PASSWORD")
-	dbname := os.Getenv("DB_NAME")
-
-	dsn := fmt.Sprintf(
-		"host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
-		host, user, password, dbname, port,
-	)
-
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	config, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse db config: %w", err)
 	}
 
-	sqlDB, _ := db.DB()
+	applyPoolSettings(config)
+	
+	pool, err := pgxpool.NewWithConfig(ctx, config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create db pool: %w", err)
+	}
 
-	sqlDB.SetMaxIdleConns(10)
-	sqlDB.SetMaxOpenConns(100)
+	// Verify connection early (fail fast)
+	if err := pool.Ping(ctx); err != nil {
+		return nil, fmt.Errorf("failed to ping db: %w", err)
+	}
 
-	return db, nil
+	return pool, nil
+}
+
+func buildDSN() string {
+	host := mustEnv("DB_HOST")
+	port := mustEnv("DB_PORT")
+	user := mustEnv("DB_USER")
+	password := mustEnv("DB_PASSWORD")
+	dbname := mustEnv("DB_NAME")
+
+	return fmt.Sprintf(
+		"postgres://%s:%s@%s:%s/%s?sslmode=disable",
+		user, password, host, port, dbname,
+	)
+}
+
+func mustEnv(key string) string {
+	val := os.Getenv(key)
+	if val == "" {
+		log.Fatalf("missing required env var: %s", key)
+	}
+	return val
+}
+
+func applyPoolSettings(cfg *pgxpool.Config) {
+	cfg.MaxConns = 10
+	cfg.MinConns = 2
+	cfg.MaxConnLifetime = time.Hour
+	cfg.MaxConnIdleTime = 30 * time.Minute
+	cfg.HealthCheckPeriod = time.Minute
+	cfg.ConnConfig.ConnectTimeout = 5 * time.Second
 }
