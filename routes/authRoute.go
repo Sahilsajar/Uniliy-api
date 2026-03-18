@@ -5,7 +5,7 @@ import (
 	"github.com/unilly-api/controllers"
 )
 
-func AuthRoutes(r *gin.Engine, authController controllers.AuthController) {
+func AuthRoutes(r *gin.Engine, authController *controllers.AuthController) {
 	authGroup := r.Group("/auth")
 	authGroup.POST("/signup", authController.SignUp)
 

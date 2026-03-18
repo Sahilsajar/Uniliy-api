@@ -7,7 +7,8 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/unilly-api/controllers"
-	"github.com/unilly-api/db"
+	db "github.com/unilly-api/db/sqlc"
+	dbConn "github.com/unilly-api/db"
 	"github.com/unilly-api/repositories"
 	"github.com/unilly-api/routes"
 	"github.com/unilly-api/services"
@@ -17,12 +18,15 @@ func main() {
 	r := gin.Default()
 	ctx := context.Background()
 
-	db, err := db.NewDB(ctx)
+	database, err := dbConn.NewDB(ctx)
 	if err != nil {
 		panic(err)
 	}
-	defer db.Close()
-	fmt.Println("Database connection established:", db)
+	defer database.Close()
+
+	fmt.Println("Database connection established:", database)
+
+	queries := db.New(database)
 
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},
@@ -31,10 +35,16 @@ func main() {
 		AllowCredentials: true,
 		MaxAge:           12 * 60 * 60,
 	}))
+
 	r.GET("/", func(c *gin.Context) {
 		c.String(200, "Hello, World!")
 	})
-	authController := controllers.NewAuthController(services.NewAuthService(repositories.NewAuthRepo(db)))
-	routes.AuthRoutes(r, *authController)
+
+	authRepo := repositories.NewAuthRepo(queries)
+	authService := services.NewAuthService(authRepo)
+	authController := controllers.NewAuthController(authService)
+
+	routes.AuthRoutes(r, authController)
+
 	r.Run()
 }

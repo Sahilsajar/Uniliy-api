@@ -17,6 +17,6 @@ func NewAuthService(authRepo *repositories.AuthRepo) *AuthService {
 	}
 }
 
-func (as *AuthService) SignUp(ctx context.Context, user *models.User) (int, error) {
+func (as *AuthService) SignUp(ctx context.Context, user *models.User) (int32, error) {
 	return as.authRepo.SignUp(ctx, user)
 }
