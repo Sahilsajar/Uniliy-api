@@ -6,8 +6,11 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/unilly-api/controllers"
 	"github.com/unilly-api/db"
+	"github.com/unilly-api/repositories"
 	"github.com/unilly-api/routes"
+	"github.com/unilly-api/services"
 )
 
 func main() {
@@ -31,6 +34,7 @@ func main() {
 	r.GET("/", func(c *gin.Context) {
 		c.String(200, "Hello, World!")
 	})
-	routes.AuthRoutes(r)
+	authController := controllers.NewAuthController(services.NewAuthService(repositories.NewAuthRepo(db)))
+	routes.AuthRoutes(r, *authController)
 	r.Run()
 }
