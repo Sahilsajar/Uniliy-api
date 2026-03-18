@@ -1,14 +1,11 @@
 package models
 
+import "time"
+
 type Comment struct {
 	Base
-	Message string `gorm:"type:text;not null"`
-
-	PostID uint
-	UserID uint
-
-	ParentCommentID *uint
-	Replies         []Comment `gorm:"foreignKey:ParentCommentID"`
-
-	Likes []CommentLike
+	Message          string
+	PostID           int64
+	UserID           int64
+	ParentCommentID  *int64 // nullable (for replies)
 }

@@ -2,6 +2,6 @@ package models
 
 type CommentLike struct {
 	Base
-	CommentID uint `gorm:"index"`
-	UserID    uint `gorm:"index"`
+	CommentID int64
+	UserID    int64
 }
