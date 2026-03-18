@@ -20,7 +20,7 @@ func NewAuthRepo(q *db.Queries) *AuthRepo {
 func (ar *AuthRepo) SignUp(ctx context.Context, user *models.User) (int32, error) {
 	createdUser, err := ar.q.CreateUser(ctx, db.CreateUserParams{
 		Email:        user.Email,
-		PasswordHash: user.Password,
+		PasswordHash: user.PasswordHash,
 		Username:     user.Username,
 	})
 

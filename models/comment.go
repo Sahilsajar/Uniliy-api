@@ -1,7 +1,5 @@
 package models
 
-import "time"
-
 type Comment struct {
 	Base
 	Message          string
