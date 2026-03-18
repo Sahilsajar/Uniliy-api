@@ -22,7 +22,7 @@ func (ac *AuthController) SignUp(ctx *gin.Context) {
 	user := &models.User{
 		Username: "sahil",
 		Email:    "sahil@example.com",
-		Password: "Password123",
+		PasswordHash: "Password123",
 	}
 	ac.authService.SignUp(ctx.Request.Context(), user)
 	ctx.JSON(http.StatusOK, gin.H{"Success": "sign up successful"})
