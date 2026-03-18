@@ -1,13 +1,12 @@
 package routes
 
 import (
-	"net/http"
-
 	"github.com/gin-gonic/gin"
+	"github.com/unilly-api/controllers"
 )
 
-func AuthRoutes(r *gin.Engine) {
-	r.GET("/auth", func(ctx *gin.Context) {
-		ctx.JSON(http.StatusOK, gin.H{"Success": "true", "msg": "go away lad"})
-	})
+func AuthRoutes(r *gin.Engine, authController controllers.AuthController) {
+	authGroup := r.Group("/auth")
+	authGroup.POST("/signup", authController.SignUp)
+
 }
