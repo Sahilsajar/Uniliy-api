@@ -2,6 +2,6 @@ package models
 
 type PostLike struct {
 	Base
-	PostID uint `gorm:"index"`
-	UserID uint `gorm:"index"`
+	PostID int64
+	UserID int64
 }
