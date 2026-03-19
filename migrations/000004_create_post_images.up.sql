@@ -1,0 +1,6 @@
+CREATE TABLE post_images (
+    id BIGSERIAL PRIMARY KEY,
+    image_url TEXT NOT NULL,
+    post_id BIGINT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
