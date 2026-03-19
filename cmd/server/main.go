@@ -12,9 +12,11 @@ import (
 	"github.com/unilly-api/repositories"
 	"github.com/unilly-api/routes"
 	"github.com/unilly-api/services"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	_ = godotenv.Load() // Load .env file
 	r := gin.Default()
 	ctx := context.Background()
 

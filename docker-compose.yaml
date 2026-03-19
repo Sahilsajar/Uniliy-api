@@ -3,47 +3,23 @@ version: '3.8'
 services:
 
   app:
-    build: .
+    build:
+      context: .
+      target: dev
+    volumes:
+      - .:/app
     ports:
       - "8080:8080"
-    depends_on:
-      db:
-        condition: service_healthy
     environment:
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
-      - DB_NAME=unilly
+      - DATABASE_URL=${DATABASE_URL}
+
   migrate:
     image: migrate/migrate
-    depends_on:
-      db:
-        condition: service_healthy
     volumes:
       - ./migrations:/migrations
     command: [
       "-path=/migrations",
-      "-database=postgres://postgres:postgres@db:5432/unilly?sslmode=disable",
+      "-database=${DATABASE_URL}",
       "up"
     ]
     restart: on-failure
-  db:
-    image: postgres:16
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      retries: 5
-    restart: always
-    shm_size: 128mb
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: unilly
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
-volumes:
-  postgres_data:

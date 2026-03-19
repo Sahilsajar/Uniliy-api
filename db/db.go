@@ -11,7 +11,7 @@ import (
 )
 
 func NewDB(ctx context.Context) (*pgxpool.Pool, error) {
-	dsn := buildDSN()
+	dsn := mustEnv("DATABASE_URL")
 
 	config, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
@@ -31,19 +31,6 @@ func NewDB(ctx context.Context) (*pgxpool.Pool, error) {
 	}
 
 	return pool, nil
-}
-
-func buildDSN() string {
-	host := mustEnv("DB_HOST")
-	port := mustEnv("DB_PORT")
-	user := mustEnv("DB_USER")
-	password := mustEnv("DB_PASSWORD")
-	dbname := mustEnv("DB_NAME")
-
-	return fmt.Sprintf(
-		"postgres://%s:%s@%s:%s/%s?sslmode=disable",
-		user, password, host, port, dbname,
-	)
 }
 
 func mustEnv(key string) string {
