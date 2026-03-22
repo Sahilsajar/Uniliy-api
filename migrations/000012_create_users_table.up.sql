@@ -15,7 +15,8 @@ CREATE TABLE users (
 
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-
+    verification_status TEXT DEFAULT 'pending',
+    is_active BOOLEAN DEFAULT TRUE,
     UNIQUE (username),
     UNIQUE (email)
 );
