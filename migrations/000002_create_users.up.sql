@@ -11,6 +11,7 @@ CREATE TABLE users (
     password_hash TEXT NOT NULL,
 
     college_id BIGINT REFERENCES colleges(id) ON DELETE SET NULL,
+    college_id_card TEXT ,
 
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
