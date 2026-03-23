@@ -8,11 +8,114 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type College struct {
+	ID           int64
+	CollegeName  string
+	CollegeEmail string
+	State        string
+	City         string
+	CollegeType  pgtype.Text
+	WebsiteUrl   pgtype.Text
+	CreatedAt    pgtype.Timestamptz
+	UpdatedAt    pgtype.Timestamptz
+}
+
+type Comment struct {
+	ID              int64
+	Message         string
+	PostID          int64
+	UserID          int64
+	ParentCommentID pgtype.Int8
+	CreatedAt       pgtype.Timestamptz
+}
+
+type CommentLike struct {
+	ID        int64
+	CommentID int64
+	UserID    int64
+	CreatedAt pgtype.Timestamptz
+}
+
+type Event struct {
+	ID          int64
+	Title       string
+	Description pgtype.Text
+	Location    pgtype.Text
+	StartTime   pgtype.Timestamptz
+	EndTime     pgtype.Timestamptz
+	CreatedBy   pgtype.Int8
+	CreatedAt   pgtype.Timestamptz
+}
+
+type EventImage struct {
+	ID        int64
+	EventID   int64
+	ImageUrl  string
+	CreatedAt pgtype.Timestamptz
+}
+
+type OtpRequest struct {
+	ID          int64
+	Email       string
+	OtpHash     string
+	ExpiresAt   pgtype.Timestamp
+	Attempts    pgtype.Int4
+	MaxAttempts pgtype.Int4
+	Verified    pgtype.Bool
+	CreatedAt   pgtype.Timestamp
+}
+
+type Post struct {
+	ID        int64
+	Title     pgtype.Text
+	Body      pgtype.Text
+	Status    pgtype.Text
+	UserID    int64
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
+type PostImage struct {
+	ID        int64
+	ImageUrl  string
+	PostID    int64
+	CreatedAt pgtype.Timestamptz
+}
+
+type PostLike struct {
+	ID        int64
+	PostID    int64
+	UserID    int64
+	CreatedAt pgtype.Timestamptz
+}
+
+type PostTag struct {
+	ID           int64
+	PostID       int64
+	TaggedUserID int64
+	CreatedAt    pgtype.Timestamptz
+}
+
 type User struct {
-	ID           int32
-	Username     string
-	Email        string
-	PasswordHash string
-	CreatedAt    pgtype.Timestamp
-	UpdatedAt    pgtype.Timestamp
+	ID                 int64
+	Username           string
+	Email              string
+	Name               pgtype.Text
+	Dob                pgtype.Date
+	ProfilePic         pgtype.Text
+	CoverImage         pgtype.Text
+	PasswordHash       string
+	CollegeID          pgtype.Int8
+	CollegeIDCard      pgtype.Text
+	CreatedAt          pgtype.Timestamptz
+	UpdatedAt          pgtype.Timestamptz
+	VerificationStatus pgtype.Text
+	IsActive           pgtype.Bool
+}
+
+type UserFollow struct {
+	ID              int64
+	FollowerUserID  int64
+	FollowingUserID int64
+	CreatedAt       pgtype.Timestamptz
 }
