@@ -48,5 +48,5 @@ func main() {
 
 	routes.AuthRoutes(r, authController)
 
-	r.Run()
+	r.Run("0.0.0.0:8080")
 }
