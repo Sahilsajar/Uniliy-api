@@ -22,21 +22,21 @@ func NewAuthRepo(q *db.Queries) *AuthRepo {
 	}
 }
 
-func (ar *AuthRepo) SignUp(ctx context.Context, user dto.CreateUserRequestDTO, bcryptHash string) (int32, error) {
-	createdUser, err := ar.q.CreateUser(ctx, dto.CreateUserRequestDTO{
+func (ar *AuthRepo) SignUp(ctx context.Context, user dto.CreateUserRequestDTO, bcryptHash string) error {
+	err := ar.q.CreateUser(ctx, db.CreateUserParams{
 		Email:        user.Email,
 		PasswordHash: bcryptHash,
 		Username:     user.Username,
-		Name:         user.Name,
-		Course:       user.Course,
-		YOP:          user.YOP,
+		Name:         pgtype.Text{String: user.Name, Valid: true},
+		Course:       pgtype.Text{String: user.Course, Valid: true},
+		Yop:          pgtype.Int4{Int32: user.YOP, Valid: true},
 	})
 
 	if err != nil {
-		return 0, err
+		return err
 	}
 
-	return createdUser.ID, nil
+	return nil
 }
 
 func (ar *AuthRepo) CanRequestOTP(

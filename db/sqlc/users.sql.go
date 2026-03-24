@@ -7,10 +7,38 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createUser = `-- name: CreateUser :exec
+INSERT INTO users (username, email, name, password_hash, course, yop)
+VALUES ($1, $2, $3, $4, $5, $6)
+`
+
+type CreateUserParams struct {
+	Username     string
+	Email        string
+	Name         pgtype.Text
+	PasswordHash string
+	Course       pgtype.Text
+	Yop          pgtype.Int4
+}
+
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
+	_, err := q.db.Exec(ctx, createUser,
+		arg.Username,
+		arg.Email,
+		arg.Name,
+		arg.PasswordHash,
+		arg.Course,
+		arg.Yop,
+	)
+	return err
+}
+
 const getUser = `-- name: GetUser :one
-SELECT id, username, email, name, dob, profile_pic, cover_image, password_hash, college_id, college_id_card, created_at, updated_at, verification_status, is_active FROM users WHERE id = $1
+SELECT id, username, email, name, dob, profile_pic, cover_image, password_hash, course, yop, college_id, college_id_card, created_at, updated_at, verification_status, is_active FROM users WHERE id = $1
 `
 
 func (q *Queries) GetUser(ctx context.Context, id int64) (User, error) {
@@ -25,6 +53,8 @@ func (q *Queries) GetUser(ctx context.Context, id int64) (User, error) {
 		&i.ProfilePic,
 		&i.CoverImage,
 		&i.PasswordHash,
+		&i.Course,
+		&i.Yop,
 		&i.CollegeID,
 		&i.CollegeIDCard,
 		&i.CreatedAt,
