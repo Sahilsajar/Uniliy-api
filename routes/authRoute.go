@@ -10,4 +10,5 @@ func AuthRoutes(r *gin.Engine, authController *controllers.AuthController) {
 	// authGroup.POST("/signup", authController.SignUp)
 	authGroup.POST("/generate-otp", authController.GenerateAndSendOTP)
 	authGroup.POST("/verify-otp", authController.VerifyOTP)
+	authGroup.POST("/login", authController.Login)
 }

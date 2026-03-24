@@ -13,9 +13,9 @@ import (
 	"os"
 	"strings"
 	"time"
-
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/unilly-api/repositories"
+	"github.com/unilly-api/utility"
 )
 
 type AuthService struct {
@@ -278,4 +278,31 @@ func (as *AuthService) VerifyOTP(
 	}
 
 	return true, nil
+}
+
+// Login
+func (as *AuthService) Login(
+	ctx context.Context,
+	email string,
+	password string,
+) (string, string, error) {
+	user, err := as.authRepo.GetUserByEmail(ctx, email)
+	if err != nil {
+		return "", "", fmt.Errorf("user not found")
+	}
+	err = utility.CheckPassword(user.PasswordHash, password)
+	if err != nil {
+		return "", "", fmt.Errorf("invalid credentials")
+	}
+	accessToken, err := utility.CreateAccessToken(fmt.Sprint(user.ID), user.Email)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to create access token: %w", err)
+	}
+	refreshToken, err := utility.CreateRefreshToken(fmt.Sprint(user.ID), user.Email)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to create refresh token: %w", err)
+	}
+
+	fmt.Printf("Access Token: %s\nRefresh Token: %s\n", accessToken, refreshToken)
+	return accessToken, refreshToken, nil
 }
