@@ -6,13 +6,13 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 	"github.com/unilly-api/controllers"
-	db "github.com/unilly-api/db/sqlc"
 	dbConn "github.com/unilly-api/db"
+	db "github.com/unilly-api/db/sqlc"
 	"github.com/unilly-api/repositories"
 	"github.com/unilly-api/routes"
 	"github.com/unilly-api/services"
-	"github.com/joho/godotenv"
 )
 
 func main() {

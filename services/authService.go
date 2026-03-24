@@ -42,7 +42,7 @@ func (as *AuthService) SignUp(ctx context.Context, user dto.CreateUserRequestDTO
 		return fmt.Errorf("failed to hash password: %w", err)
 	}
 
-	if _, err := as.authRepo.SignUp(ctx, user, string(bycryptHash)); err != nil {
+	if err := as.authRepo.SignUp(ctx, user, string(bycryptHash)); err != nil {
 		return fmt.Errorf("failed to create user: %w", err)
 	}
 	return nil
