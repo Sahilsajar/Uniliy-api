@@ -109,3 +109,8 @@ func (ar *AuthRepo) IncrementOTPAttempts(ctx context.Context, email string) erro
 func (ar *AuthRepo) DeleteOTP(ctx context.Context, email string) error {
 	return ar.q.DeleteOTPRequest(ctx, email)
 }
+
+
+func (ar *AuthRepo) GetUserByEmail(ctx context.Context, email string) (db.User, error) {
+	return ar.q.GetUserByEmail(ctx, email)
+}

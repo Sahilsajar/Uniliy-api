@@ -73,3 +73,21 @@ func (ac *AuthController) VerifyOTP(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"message": "OTP verified successfully"})
 
 }
+
+func (ac *AuthController) Login(ctx *gin.Context) {
+	type LoginRequest struct {
+		Email string `json:"email" binding:"required,email"`
+		Password string `json:"password" binding:"required"`
+	}
+	var req LoginRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+	accessToken, refreshToken,err := ac.authService.Login(ctx.Request.Context(), req.Email, req.Password)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
+		return
+	}
+	ctx.JSON(http.StatusOK, gin.H{"message": "Login successful", "access_token": accessToken, "refresh_token": refreshToken})	
+}
