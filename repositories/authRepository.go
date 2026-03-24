@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	db "github.com/unilly-api/db/sqlc"
+	"github.com/unilly-api/dto"
 )
 
 type AuthRepo struct {
@@ -21,19 +22,22 @@ func NewAuthRepo(q *db.Queries) *AuthRepo {
 	}
 }
 
-// func (ar *AuthRepo) SignUp(ctx context.Context, user *models.User) (int32, error) {
-// 	createdUser, err := ar.q.CreateUser(ctx, db.CreateUserParams{
-// 		Email:        user.Email,
-// 		PasswordHash: user.PasswordHash,
-// 		Username:     user.Username,
-// 	})
+func (ar *AuthRepo) SignUp(ctx context.Context, user dto.CreateUserRequestDTO, bcryptHash string) (int32, error) {
+	createdUser, err := ar.q.CreateUser(ctx, dto.CreateUserRequestDTO{
+		Email:        user.Email,
+		PasswordHash: bcryptHash,
+		Username:     user.Username,
+		Name:         user.Name,
+		Course:       user.Course,
+		YOP:          user.YOP,
+	})
 
-// 	if err != nil {
-// 		return 0, err
-// 	}
+	if err != nil {
+		return 0, err
+	}
 
-// 	return createdUser.ID, nil
-// }
+	return createdUser.ID, nil
+}
 
 func (ar *AuthRepo) CanRequestOTP(
 	ctx context.Context,
@@ -69,7 +73,7 @@ func (ar *AuthRepo) SaveOTP(ctx context.Context, email, otpHash string, expiresA
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return fmt.Errorf("failed to check existing otp: %w", err)
 	}
-	
+
 	if resp.ID != 0 {
 		// Update existing record
 		return ar.q.UpdateOTPRequest(ctx, db.UpdateOTPRequestParams{
@@ -80,7 +84,7 @@ func (ar *AuthRepo) SaveOTP(ctx context.Context, email, otpHash string, expiresA
 			Email:     email,
 		})
 	}
-	
+
 	// Create new record
 	return ar.q.CreateOTPRequest(ctx, db.CreateOTPRequestParams{
 		Email:       email,
@@ -104,4 +108,4 @@ func (ar *AuthRepo) IncrementOTPAttempts(ctx context.Context, email string) erro
 
 func (ar *AuthRepo) DeleteOTP(ctx context.Context, email string) error {
 	return ar.q.DeleteOTPRequest(ctx, email)
-}	
+}

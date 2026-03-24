@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/unilly-api/dto"
 	"github.com/unilly-api/services"
 )
 
@@ -17,17 +18,21 @@ func NewAuthController(authService *services.AuthService) *AuthController {
 	}
 }
 
-// func (ac *AuthController) SignUp(ctx *gin.Context) {
-// 	user := &models.User{
-// 		Username: "sahil",
-// 		Email:    "sahil@example.com",
-// 		PasswordHash: "Password123",
-// 	}
-// 	ac.authService.SignUp(ctx.Request.Context(), user)
-// 	ctx.JSON(http.StatusOK, gin.H{"Success": "sign up successful"})
-// }
+func (ac *AuthController) SignUp(ctx *gin.Context) {
 
+	var user dto.CreateUserRequestDTO
+	if err := ctx.ShouldBindJSON(&user); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+	err := ac.authService.SignUp(ctx.Request.Context(), user)
 
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to sign up"})
+		return
+	}
+	ctx.JSON(http.StatusOK, gin.H{"Success": "sign up successful"})
+}
 
 func (ac *AuthController) GenerateAndSendOTP(ctx *gin.Context) {
 	type VerifyEmailRequest struct {

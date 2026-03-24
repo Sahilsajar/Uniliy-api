@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -15,7 +16,9 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/unilly-api/dto"
 	"github.com/unilly-api/repositories"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthService struct {
@@ -30,6 +33,19 @@ func NewAuthService(authRepo *repositories.AuthRepo) *AuthService {
 			Timeout: 5 * time.Second,
 		},
 	}
+}
+
+func (as *AuthService) SignUp(ctx context.Context, user dto.CreateUserRequestDTO) error {
+
+	bycryptHash, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	if _, err := as.authRepo.SignUp(ctx, user, string(bycryptHash)); err != nil {
+		return fmt.Errorf("failed to create user: %w", err)
+	}
+	return nil
 }
 
 func GenerateOTP(length int) (string, error) {
@@ -108,15 +124,15 @@ func (as *AuthService) sendEmail(ctx context.Context, email, otp string) error {
 	}
 
 	payload, err := json.Marshal(map[string]any{
-    "sender": map[string]string{
-        "name":  "Unilly",
-        "email": emailFrom,
-    },
-    "to": []map[string]string{
-        {"email": email},
-    },
-    "subject": "Your OTP Code",
-    "htmlContent": fmt.Sprintf(`
+		"sender": map[string]string{
+			"name":  "Unilly",
+			"email": emailFrom,
+		},
+		"to": []map[string]string{
+			{"email": email},
+		},
+		"subject": "Your OTP Code",
+		"htmlContent": fmt.Sprintf(`
 <!DOCTYPE html>
 <html>
 <head>
@@ -212,7 +228,7 @@ func (as *AuthService) sendEmail(ctx context.Context, email, otp string) error {
 </body>
 </html>
 `, otp),
-})
+	})
 	if err != nil {
 		return err
 	}
