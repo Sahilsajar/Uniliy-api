@@ -2,8 +2,10 @@ package api
 
 import (
 	"log"
+	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/unilly-api/utility"
 )
 
 func ErrorHandler() gin.HandlerFunc {
@@ -32,4 +34,36 @@ func Recovery() gin.HandlerFunc {
 		_ = c.Error(Internal("INTERNAL_SERVER_ERROR", "Something went wrong"))
 		c.Abort()
 	})
+}
+
+func AuthMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		tokenStr := c.GetHeader("Authorization")
+		if tokenStr == "" {
+			c.AbortWithStatusJSON(401, errorResponse{
+				Success: false,
+				Error: responseError{
+					Code:    "UNAUTHORIZED",
+					Message: "Missing Authorization header",
+				},
+			})
+			return
+		}
+		token := strings.Split(tokenStr, "Bearer ")[1]
+		userID,email, err := utility.ValidateToken(token)
+		if err != nil {
+			c.AbortWithStatusJSON(401, errorResponse{
+				Success: false,
+				Error: responseError{
+					Code:    "INVALID_TOKEN",
+					Message: "Invalid or expired token",
+				},
+			})
+			return
+		}
+
+		c.Set("user_id", userID)
+		c.Set("email", email)
+		c.Next()
+	}
 }

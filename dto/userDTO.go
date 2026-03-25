@@ -18,3 +18,12 @@ type CreateUserDTO struct {
 	Course       string `json:"course" binding:"required"`
 	YOP          int32  `json:"yop" binding:"required"`
 }
+
+type UserProfileDTO struct {
+	ID       string `json:"id"`
+	Email    string `json:"email"`
+	Username string `json:"username"`
+	Name     string `json:"name,omitempty"`
+	Course   string `json:"course,omitempty"`
+	YOP      int32  `json:"yop,omitempty"`
+}

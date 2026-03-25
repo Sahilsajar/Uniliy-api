@@ -372,3 +372,22 @@ func (as *AuthService) Login(
 
 	return accessToken, refreshToken, nil
 }
+
+func (as *AuthService) GetProfile(ctx context.Context, userID int64) (*dto.UserProfileDTO, error) {
+	user, err := as.authRepo.GetUserByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, api.NotFound("USER_NOT_FOUND", "User not found")
+		}
+		return nil, api.Internal("PROFILE_RETRIEVAL_FAILED", "Failed to retrieve profile").WithCause(err)
+	}		
+	profile := &dto.UserProfileDTO{
+		ID:       fmt.Sprint(user.ID),
+		Email:    user.Email,
+		Username: user.Username,
+		Name:     user.Name.String,
+		Course:   user.Course.String,
+		YOP:      user.Yop.Int32,
+	}
+	return profile, nil
+}		

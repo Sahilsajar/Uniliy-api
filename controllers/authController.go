@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/unilly-api/api"
@@ -80,4 +81,18 @@ func (ac *AuthController) Login(ctx *gin.Context) error {
 		"refresh_token": refreshToken,
 	})
 	return nil
+}
+
+func (ac *AuthController) GetProfile(ctx *gin.Context) error {
+	userID := ctx.GetString("user_id")
+	userIDInt64, err := strconv.Atoi(userID)
+	if err != nil {
+		return api.BadRequest("INVALID_USER_ID", "Invalid user ID")
+	}
+	profile, err := ac.authService.GetProfile(ctx.Request.Context(), int64(userIDInt64))
+	if err != nil {
+		return err
+	}
+	api.Success(ctx, http.StatusOK, "Profile retrieved successfully", profile)
+	return nil	
 }
