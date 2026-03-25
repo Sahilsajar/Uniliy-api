@@ -335,9 +335,6 @@ func (as *AuthService) Login(
 ) (string, string, error) {
 	var user *db.User
 	var err error
-	if err := as.requireVerifiedOTP(ctx, identifier); err != nil {
-		return "", "", err
-	}
 
 	if utility.IsEmail(identifier) {
 		u, err := as.authRepo.GetUserByEmail(ctx, identifier)
