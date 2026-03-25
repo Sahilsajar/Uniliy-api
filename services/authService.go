@@ -5,20 +5,24 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
-
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"net/http"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/unilly-api/api"
 	"github.com/unilly-api/dto"
 	"github.com/unilly-api/repositories"
-	"golang.org/x/crypto/bcrypt"
 	"github.com/unilly-api/utility"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthService struct {
@@ -36,6 +40,9 @@ func NewAuthService(authRepo *repositories.AuthRepo) *AuthService {
 }
 
 func (as *AuthService) SignUp(ctx context.Context, user dto.CreateUserRequestDTO) error {
+	if err := as.requireVerifiedOTP(ctx, user.Email); err != nil {
+		return err
+	}
 
 	bycryptHash, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -43,7 +50,14 @@ func (as *AuthService) SignUp(ctx context.Context, user dto.CreateUserRequestDTO
 	}
 
 	if err := as.authRepo.SignUp(ctx, user, string(bycryptHash)); err != nil {
-		return fmt.Errorf("failed to create user: %w", err)
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return api.Conflict("USER_ALREADY_EXISTS", "User with this email or username already exists").WithCause(err)
+		}
+		return api.Internal("SIGNUP_FAILED", "Failed to sign up").WithCause(err)
+	}
+	if err := as.authRepo.DeleteOTP(ctx, user.Email); err != nil {
+		return api.Internal("OTP_CLEANUP_FAILED", "Failed to finalize signup").WithCause(err)
 	}
 	return nil
 }
@@ -83,32 +97,29 @@ func (as *AuthService) GenerateAndSendOTP(
 	// Rate limit check (critical to do this BEFORE generating OTP to prevent abuse)
 	allowed, err := as.authRepo.CanRequestOTP(ctx, email)
 	if err != nil {
-		return err
+		return api.Internal("OTP_RATE_LIMIT_CHECK_FAILED", "Failed to process OTP request").WithCause(err)
 	}
 	if !allowed {
-		return fmt.Errorf("too many requests, please wait before retrying")
+		return api.TooManyRequests("OTP_RATE_LIMITED", "Too many OTP requests. Please wait before retrying")
 	}
 
 	// Generate OTP
 	otp, err := GenerateOTP(6)
 	if err != nil {
-		return fmt.Errorf("failed to generate otp: %w", err)
+		return api.Internal("OTP_GENERATION_FAILED", "Failed to generate OTP").WithCause(err)
 	}
 	otpHash := hashOTP(otp)
 	expiresAt := pgtype.Timestamp{Time: time.Now().Add(10 * time.Minute), Valid: true}
 
 	//  Save OTP FIRST
 	err = as.authRepo.SaveOTP(ctx, email, otpHash, expiresAt)
-	fmt.Print(err)
 	if err != nil {
-		fmt.Print("lun")
-		return fmt.Errorf("failed to save otp: %w", err)
+		return api.Internal("OTP_SAVE_FAILED", "Failed to generate OTP").WithCause(err)
 	}
 
 	// Send email
 	if err := as.sendEmail(ctx, email, otp); err != nil {
-		// mark OTP as failed or delete
-		return fmt.Errorf("failed to send email: %w", err)
+		return api.Internal("OTP_DELIVERY_FAILED", "Failed to send OTP").WithCause(err)
 	}
 	return nil
 }
@@ -260,40 +271,54 @@ func (as *AuthService) sendEmail(ctx context.Context, email, otp string) error {
 	return nil
 }
 
-func (as *AuthService) VerifyOTP(
-	ctx context.Context,
-	email string,
-	otp string,
-) (bool, error) {
-
+func (as *AuthService) VerifyOTP(ctx context.Context, email string, otp string) error {
 	record, err := as.authRepo.GetLatestOTP(ctx, email)
 	if err != nil {
-		return false, err
+		if errors.Is(err, pgx.ErrNoRows) {
+			return api.Unauthorized("OTP_NOT_FOUND", "No OTP request found for this email")
+		}
+		return api.Internal("OTP_LOOKUP_FAILED", "Failed to verify OTP").WithCause(err)
 	}
 
-	// 1. Expiry check
 	if time.Now().After(record.ExpiresAt.Time) {
-		return false, fmt.Errorf("otp expired")
+		return api.Unauthorized("OTP_EXPIRED", "OTP expired")
 	}
 
-	// 2. Attempt limit
 	if record.Attempts.Int32 >= record.MaxAttempts.Int32 {
-		return false, fmt.Errorf("too many attempts")
+		return api.TooManyRequests("OTP_ATTEMPTS_EXCEEDED", "Too many invalid OTP attempts")
 	}
 
-	// 3. Compare hash
 	if hashOTP(otp) != record.OtpHash {
 		_ = as.authRepo.IncrementOTPAttempts(ctx, record.Email)
-		return false, fmt.Errorf("invalid otp")
+		return api.Unauthorized("OTP_INVALID", "Invalid OTP")
 	}
 
-	// 4. Success → invalidate
 	err = as.authRepo.MarkOTPAsVerified(ctx, record.Email)
 	if err != nil {
-		return false, err
+		return api.Internal("OTP_VERIFY_FAILED", "Failed to verify OTP").WithCause(err)
 	}
 
-	return true, nil
+	return nil
+}
+
+func (as *AuthService) requireVerifiedOTP(ctx context.Context, email string) error {
+	record, err := as.authRepo.GetLatestOTP(ctx, email)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return api.Forbidden("OTP_VERIFICATION_REQUIRED", "Verify OTP before continuing")
+		}
+		return api.Internal("OTP_LOOKUP_FAILED", "Failed to validate OTP status").WithCause(err)
+	}
+
+	if time.Now().After(record.ExpiresAt.Time) {
+		return api.Forbidden("OTP_EXPIRED", "Verified OTP expired. Request a new OTP")
+	}
+
+	if !record.Verified.Valid || !record.Verified.Bool {
+		return api.Forbidden("OTP_VERIFICATION_REQUIRED", "Verify OTP before continuing")
+	}
+
+	return nil
 }
 
 // Login
@@ -302,23 +327,33 @@ func (as *AuthService) Login(
 	email string,
 	password string,
 ) (string, string, error) {
+	if err := as.requireVerifiedOTP(ctx, email); err != nil {
+		return "", "", err
+	}
+
 	user, err := as.authRepo.GetUserByEmail(ctx, email)
 	if err != nil {
-		return "", "", fmt.Errorf("user not found")
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", "", api.Unauthorized("INVALID_CREDENTIALS", "Invalid email or password")
+		}
+		return "", "", api.Internal("LOGIN_FAILED", "Failed to login").WithCause(err)
 	}
 	err = utility.CheckPassword(user.PasswordHash, password)
 	if err != nil {
-		return "", "", fmt.Errorf("invalid credentials")
+		return "", "", api.Unauthorized("INVALID_CREDENTIALS", "Invalid email or password")
 	}
 	accessToken, err := utility.CreateAccessToken(fmt.Sprint(user.ID), user.Email)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to create access token: %w", err)
+		return "", "", api.Internal("ACCESS_TOKEN_CREATION_FAILED", "Failed to create access token").WithCause(err)
 	}
 	refreshToken, err := utility.CreateRefreshToken(fmt.Sprint(user.ID), user.Email)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to create refresh token: %w", err)
+		return "", "", api.Internal("REFRESH_TOKEN_CREATION_FAILED", "Failed to create refresh token").WithCause(err)
 	}
 
-	fmt.Printf("Access Token: %s\nRefresh Token: %s\n", accessToken, refreshToken)
+	if err := as.authRepo.DeleteOTP(ctx, email); err != nil {
+		return "", "", api.Internal("OTP_CLEANUP_FAILED", "Failed to finalize login").WithCause(err)
+	}
+
 	return accessToken, refreshToken, nil
 }
