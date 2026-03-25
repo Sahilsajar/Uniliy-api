@@ -66,7 +66,7 @@ func (q *Queries) GetUser(ctx context.Context, id int64) (User, error) {
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, username, email, name, dob, profile_pic, cover_image, password_hash, college_id, college_id_card, created_at, updated_at, verification_status, is_active FROM users WHERE email = $1
+SELECT id, username, email, name, dob, profile_pic, cover_image, password_hash, course, yop, college_id, college_id_card, created_at, updated_at, verification_status, is_active FROM users WHERE email = $1
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
@@ -81,6 +81,36 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.ProfilePic,
 		&i.CoverImage,
 		&i.PasswordHash,
+		&i.Course,
+		&i.Yop,
+		&i.CollegeID,
+		&i.CollegeIDCard,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.VerificationStatus,
+		&i.IsActive,
+	)
+	return i, err
+}
+
+const getUserByUsername = `-- name: GetUserByUsername :one
+SELECT id, username, email, name, dob, profile_pic, cover_image, password_hash, course, yop, college_id, college_id_card, created_at, updated_at, verification_status, is_active FROM users WHERE username = $1
+`
+
+func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User, error) {
+	row := q.db.QueryRow(ctx, getUserByUsername, username)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Email,
+		&i.Name,
+		&i.Dob,
+		&i.ProfilePic,
+		&i.CoverImage,
+		&i.PasswordHash,
+		&i.Course,
+		&i.Yop,
 		&i.CollegeID,
 		&i.CollegeIDCard,
 		&i.CreatedAt,

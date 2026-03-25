@@ -2,6 +2,7 @@ package utility
 
 import (
 	"os"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -49,4 +50,8 @@ func CreateRefreshToken(userID, email string) (string, error) {
 
     token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
     return token.SignedString(secretKey)
+}
+
+func IsEmail(s string) bool {
+	return strings.Contains(s, "@")
 }

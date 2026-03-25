@@ -114,3 +114,7 @@ func (ar *AuthRepo) DeleteOTP(ctx context.Context, email string) error {
 func (ar *AuthRepo) GetUserByEmail(ctx context.Context, email string) (db.User, error) {
 	return ar.q.GetUserByEmail(ctx, email)
 }
+
+func (ar *AuthRepo) GetUserByUserName(ctx context.Context, username string) (db.User, error) {
+	return ar.q.GetUserByUsername(ctx, username)
+}

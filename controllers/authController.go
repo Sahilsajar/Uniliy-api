@@ -64,14 +64,14 @@ func (ac *AuthController) VerifyOTP(ctx *gin.Context) error {
 
 func (ac *AuthController) Login(ctx *gin.Context) error {
 	type LoginRequest struct {
-		Email    string `json:"email" binding:"required,email"`
-		Password string `json:"password" binding:"required"`
+		Identifier string `json:"identifier" binding:"required"`
+		Password   string `json:"password" binding:"required"`
 	}
 	var req LoginRequest
 	if err := api.BindJSON(ctx, &req); err != nil {
 		return err
 	}
-	accessToken, refreshToken, err := ac.authService.Login(ctx.Request.Context(), req.Email, req.Password)
+	accessToken, refreshToken, err := ac.authService.Login(ctx.Request.Context(), req.Identifier, req.Password)
 	if err != nil {
 		return err
 	}
