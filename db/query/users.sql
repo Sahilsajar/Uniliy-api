@@ -11,3 +11,5 @@ SELECT * FROM users WHERE email = $1;
 INSERT INTO users (username, email, name, password_hash, course, yop)
 VALUES ($1, $2, $3, $4, $5, $6);
 
+-- name: GetUserByUsername :one
+SELECT * FROM users WHERE username = $1;

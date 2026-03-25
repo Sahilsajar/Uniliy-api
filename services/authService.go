@@ -19,6 +19,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/unilly-api/api"
+	db "github.com/unilly-api/db/sqlc"
 	"github.com/unilly-api/dto"
 	"github.com/unilly-api/repositories"
 	"github.com/unilly-api/utility"
@@ -298,6 +299,11 @@ func (as *AuthService) VerifyOTP(ctx context.Context, email string, otp string) 
 		return api.Internal("OTP_VERIFY_FAILED", "Failed to verify OTP").WithCause(err)
 	}
 
+	err = as.authRepo.DeleteOTP(ctx, record.Email)
+	if err != nil {
+		return api.Internal("OTP_CLEANUP_FAILED", "Failed to finalize OTP verification").WithCause(err)
+	}
+
 	return nil
 }
 
@@ -324,14 +330,30 @@ func (as *AuthService) requireVerifiedOTP(ctx context.Context, email string) err
 // Login
 func (as *AuthService) Login(
 	ctx context.Context,
-	email string,
+	identifier string,
 	password string,
 ) (string, string, error) {
-	if err := as.requireVerifiedOTP(ctx, email); err != nil {
+	var user *db.User
+	var err error
+	if err := as.requireVerifiedOTP(ctx, identifier); err != nil {
 		return "", "", err
 	}
 
-	user, err := as.authRepo.GetUserByEmail(ctx, email)
+	if utility.IsEmail(identifier) {
+		u, err := as.authRepo.GetUserByEmail(ctx, identifier)
+		if err != nil {
+			user = nil
+		} else {
+			user = &u
+		}
+	} else {
+		u, err := as.authRepo.GetUserByUserName(ctx, identifier)
+		if err != nil {
+			user = nil
+		} else {
+			user = &u
+		}
+	}
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return "", "", api.Unauthorized("INVALID_CREDENTIALS", "Invalid email or password")
@@ -349,10 +371,6 @@ func (as *AuthService) Login(
 	refreshToken, err := utility.CreateRefreshToken(fmt.Sprint(user.ID), user.Email)
 	if err != nil {
 		return "", "", api.Internal("REFRESH_TOKEN_CREATION_FAILED", "Failed to create refresh token").WithCause(err)
-	}
-
-	if err := as.authRepo.DeleteOTP(ctx, email); err != nil {
-		return "", "", api.Internal("OTP_CLEANUP_FAILED", "Failed to finalize login").WithCause(err)
 	}
 
 	return accessToken, refreshToken, nil
