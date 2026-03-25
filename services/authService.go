@@ -41,9 +41,6 @@ func NewAuthService(authRepo *repositories.AuthRepo) *AuthService {
 }
 
 func (as *AuthService) SignUp(ctx context.Context, user dto.CreateUserRequestDTO) error {
-	if err := as.requireVerifiedOTP(ctx, user.Email); err != nil {
-		return err
-	}
 
 	bycryptHash, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
