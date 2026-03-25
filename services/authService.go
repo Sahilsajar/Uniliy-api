@@ -373,6 +373,52 @@ func (as *AuthService) Login(
 	return accessToken, refreshToken, nil
 }
 
+func (as *AuthService) RefreshToken(ctx context.Context, refreshToken string) (string, string, error) {
+
+	// 1️⃣ Validate refresh token
+	tokenData, err := utility.ValidateRefreshToken(refreshToken)
+	if err != nil {
+		return "", "", api.Unauthorized("INVALID_REFRESH_TOKEN", "Invalid refresh token")
+	}
+
+	userID := tokenData.UserID
+
+	// 2️⃣ Check DB
+	rt, err := as.authRepo.GetRefreshToken(ctx, hashOTP(refreshToken))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", "", api.Unauthorized("REFRESH_TOKEN_NOT_FOUND", "Refresh token not found")
+		}
+		return "", "", api.Internal("REFRESH_TOKEN_LOOKUP_FAILED", "Failed to validate refresh token").WithCause(err)
+	}
+
+	// 3️⃣ Expiry check
+	if time.Now().After(rt.ExpiresAt.Time) {
+		return "", "", api.Unauthorized("REFRESH_TOKEN_EXPIRED", "Refresh token expired")
+	}
+
+	// 4️⃣ Generate tokens via utility
+	newAccess, err := utility.GenerateAccessToken(userID)
+	if err != nil {
+		return "", "", api.Internal("ACCESS_TOKEN_FAILED", "Failed to generate access token").WithCause(err)
+	}
+
+	newRefresh, err := utility.GenerateRefreshToken(userID)
+	if err != nil {
+		return "", "", api.Internal("REFRESH_TOKEN_FAILED", "Failed to generate refresh token").WithCause(err)
+	}
+
+	// 5️⃣ Rotation
+	_ = as.authRepo.DeleteRefreshToken(ctx, hashOTP(refreshToken))
+
+	err = as.authRepo.CreateRefreshToken(ctx, userID, hashOTP(newRefresh), time.Now().Add(7*24*time.Hour))
+	if err != nil {
+		return "", "", api.Internal("REFRESH_TOKEN_SAVE_FAILED", "Failed to save new refresh token").WithCause(err)
+	}
+
+	return newAccess, newRefresh, nil
+}
+
 func (as *AuthService) GetProfile(ctx context.Context, userID int64) (*dto.UserProfileDTO, error) {
 	user, err := as.authRepo.GetUserByID(ctx, userID)
 	if err != nil {
@@ -380,7 +426,7 @@ func (as *AuthService) GetProfile(ctx context.Context, userID int64) (*dto.UserP
 			return nil, api.NotFound("USER_NOT_FOUND", "User not found")
 		}
 		return nil, api.Internal("PROFILE_RETRIEVAL_FAILED", "Failed to retrieve profile").WithCause(err)
-	}		
+	}
 	profile := &dto.UserProfileDTO{
 		ID:       fmt.Sprint(user.ID),
 		Email:    user.Email,
@@ -390,4 +436,4 @@ func (as *AuthService) GetProfile(ctx context.Context, userID int64) (*dto.UserP
 		YOP:      user.Yop.Int32,
 	}
 	return profile, nil
-}		
+}

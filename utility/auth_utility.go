@@ -1,6 +1,7 @@
 package utility
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"time"
@@ -9,6 +10,11 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
+
+type TokenData struct {
+	UserID int32
+	Type   string
+}
 
 func HashPassword(password string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -33,6 +39,7 @@ func CreateAccessToken(userID, email string) (string, error) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(secretKey)
+
 }
 
 func CreateRefreshToken(userID, email string) (string, error) {
@@ -81,4 +88,92 @@ func ValidateToken(tokenStr string) (string, string, error) {
 	}
 
 	return "", "", jwt.ErrInvalidKey
+}
+
+// 🔐 get secrets
+func getAccessSecret() ([]byte, error) {
+	secret := os.Getenv("JWT_ACCESS_SECRET")
+	if secret == "" {
+		return nil, fmt.Errorf("missing access secret")
+	}
+	return []byte(secret), nil
+}
+
+func getRefreshSecret() ([]byte, error) {
+	secret := os.Getenv("JWT_REFRESH_SECRET")
+	if secret == "" {
+		return nil, fmt.Errorf("missing refresh secret")
+	}
+	return []byte(secret), nil
+}
+
+// ✅ GENERATE ACCESS TOKEN
+func GenerateAccessToken(userID int32) (string, error) {
+	secret, err := getAccessSecret()
+	if err != nil {
+		return "", err
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user_id": userID,
+		"type":    "access",
+		"exp":     time.Now().Add(15 * time.Minute).Unix(),
+	})
+
+	return token.SignedString(secret)
+}
+
+// ✅ GENERATE REFRESH TOKEN
+func GenerateRefreshToken(userID int32) (string, error) {
+	secret, err := getRefreshSecret()
+	if err != nil {
+		return "", err
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user_id": userID,
+		"type":    "refresh",
+		"exp":     time.Now().Add(7 * 24 * time.Hour).Unix(),
+	})
+
+	return token.SignedString(secret)
+}
+
+// ✅ VALIDATE REFRESH TOKEN
+func ValidateRefreshToken(tokenStr string) (*TokenData, error) {
+	secret, err := getRefreshSecret()
+	if err != nil {
+		return nil, err
+	}
+
+	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, jwt.ErrSignatureInvalid
+		}
+		return secret, nil
+	})
+
+	if err != nil || !token.Valid {
+		return nil, fmt.Errorf("invalid or expired token")
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return nil, fmt.Errorf("invalid claims")
+	}
+
+	id, ok := claims["user_id"].(float64)
+	if !ok {
+		return nil, fmt.Errorf("invalid user_id")
+	}
+
+	tokenType, ok := claims["type"].(string)
+	if !ok || tokenType != "refresh" {
+		return nil, fmt.Errorf("invalid token type")
+	}
+
+	return &TokenData{
+		UserID: int32(id),
+		Type:   tokenType,
+	}, nil
 }

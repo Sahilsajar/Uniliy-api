@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"time"
@@ -115,10 +116,34 @@ func (ar *AuthRepo) GetUserByEmail(ctx context.Context, email string) (db.User, 
 	return ar.q.GetUserByEmail(ctx, email)
 }
 
-func (ar *AuthRepo) GetUserByUserName(ctx context.Context, username string) (db.User, error) {
-	return ar.q.GetUserByUsername(ctx, username)
+func (r *AuthRepo) DeleteRefreshToken(ctx context.Context, token string) error {
+	return r.q.DeleteRefreshToken(ctx, token)
+}
+
+func (r *AuthRepo) GetRefreshToken(ctx context.Context, token string) (*db.RefreshToken, error) {
+	rt, err := r.q.GetRefreshToken(ctx, token)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errors.New("token not found")
+		}
+		return nil, err
+	}
+	return &rt, nil
+}
+
+func (r *AuthRepo) CreateRefreshToken(ctx context.Context, userID int32, token string, exp time.Time) error {
+	_, err := r.q.CreateRefreshToken(ctx, db.CreateRefreshTokenParams{
+		UserID:    pgtype.Int4{Int32: userID, Valid: true},
+		TokenHash: token,
+		ExpiresAt: pgtype.Timestamp{Time: exp, Valid: true},
+	})
+	return err
 }
 
 func (ar *AuthRepo) GetUserByID(ctx context.Context, id int64) (db.User, error) {
 	return ar.q.GetUserByID(ctx, id)
+}
+
+func (ar *AuthRepo) GetUserByUserName(ctx context.Context, username string) (db.User, error) {
+	return ar.q.GetUserByUsername(ctx, username)
 }
