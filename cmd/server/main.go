@@ -7,6 +7,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"github.com/unilly-api/api"
 	"github.com/unilly-api/controllers"
 	dbConn "github.com/unilly-api/db"
 	db "github.com/unilly-api/db/sqlc"
@@ -17,7 +18,10 @@ import (
 
 func main() {
 	_ = godotenv.Load() // Load .env file
-	r := gin.Default()
+	r := gin.New()
+	r.Use(gin.Logger())
+	r.Use(api.Recovery())
+	r.Use(api.ErrorHandler())
 	ctx := context.Background()
 
 	database, err := dbConn.NewDB(ctx)
@@ -39,7 +43,7 @@ func main() {
 	}))
 
 	r.GET("/", func(c *gin.Context) {
-		c.String(200, "Hello, World!")
+		api.Success(c, 200, "Unilly API is running", nil)
 	})
 
 	authRepo := repositories.NewAuthRepo(queries)
