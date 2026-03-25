@@ -96,6 +96,14 @@ type PostTag struct {
 	CreatedAt    pgtype.Timestamptz
 }
 
+type RefreshToken struct {
+	ID        int64
+	UserID    pgtype.Int4
+	TokenHash string
+	ExpiresAt pgtype.Timestamp
+	CreatedAt pgtype.Timestamp
+}
+
 type User struct {
 	ID                 int64
 	Username           string

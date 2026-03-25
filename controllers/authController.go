@@ -94,5 +94,23 @@ func (ac *AuthController) GetProfile(ctx *gin.Context) error {
 		return err
 	}
 	api.Success(ctx, http.StatusOK, "Profile retrieved successfully", profile)
-	return nil	
+	return nil
+}
+func (ac *AuthController) RefreshToken(ctx *gin.Context) error {
+	type RefreshTokenRequest struct {
+		RefreshToken string `json:"refresh_token" binding:"required"`
+	}
+	var req RefreshTokenRequest
+	if err := api.BindJSON(ctx, &req); err != nil {
+		return err
+	}
+	accessToken, refreshToken, err := ac.authService.RefreshToken(ctx.Request.Context(), req.RefreshToken)
+	if err != nil {
+		return err
+	}
+	api.Success(ctx, http.StatusOK, "Token refreshed successfully", gin.H{
+		"access_token":  accessToken,
+		"refresh_token": refreshToken,
+	})
+	return nil
 }

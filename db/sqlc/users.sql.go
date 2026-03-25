@@ -11,6 +11,31 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createRefreshToken = `-- name: CreateRefreshToken :one
+INSERT INTO refresh_tokens (user_id, token_hash, expires_at)
+VALUES ($1, $2, $3)
+RETURNING id, user_id, token_hash, expires_at, created_at
+`
+
+type CreateRefreshTokenParams struct {
+	UserID    pgtype.Int4
+	TokenHash string
+	ExpiresAt pgtype.Timestamp
+}
+
+func (q *Queries) CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) (RefreshToken, error) {
+	row := q.db.QueryRow(ctx, createRefreshToken, arg.UserID, arg.TokenHash, arg.ExpiresAt)
+	var i RefreshToken
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.TokenHash,
+		&i.ExpiresAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const createUser = `-- name: CreateUser :exec
 INSERT INTO users (username, email, name, password_hash, course, yop)
 VALUES ($1, $2, $3, $4, $5, $6)
@@ -35,6 +60,34 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
 		arg.Yop,
 	)
 	return err
+}
+
+const deleteRefreshToken = `-- name: DeleteRefreshToken :exec
+DELETE FROM refresh_tokens
+WHERE token_hash = $1
+`
+
+func (q *Queries) DeleteRefreshToken(ctx context.Context, tokenHash string) error {
+	_, err := q.db.Exec(ctx, deleteRefreshToken, tokenHash)
+	return err
+}
+
+const getRefreshToken = `-- name: GetRefreshToken :one
+SELECT id, user_id, token_hash, expires_at, created_at FROM refresh_tokens
+WHERE token_hash = $1
+`
+
+func (q *Queries) GetRefreshToken(ctx context.Context, tokenHash string) (RefreshToken, error) {
+	row := q.db.QueryRow(ctx, getRefreshToken, tokenHash)
+	var i RefreshToken
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.TokenHash,
+		&i.ExpiresAt,
+		&i.CreatedAt,
+	)
+	return i, err
 }
 
 const getUser = `-- name: GetUser :one

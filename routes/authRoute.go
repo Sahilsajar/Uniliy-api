@@ -13,4 +13,5 @@ func AuthRoutes(r *gin.Engine, authController *controllers.AuthController) {
 	authGroup.POST("/verify-otp", api.Wrap(authController.VerifyOTP))
 	authGroup.POST("/login", api.Wrap(authController.Login))
 	authGroup.GET("/me", api.AuthMiddleware(), api.Wrap(authController.GetProfile))
+	authGroup.POST("/refresh-token", api.Wrap(authController.RefreshToken))
 }
