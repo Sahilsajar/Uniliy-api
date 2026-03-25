@@ -94,34 +94,44 @@ func (as *AuthService) GenerateAndSendOTP(
 	ctx context.Context,
 	email string,
 ) error {
+	_, err := as.authRepo.GetUserByEmail(ctx, email)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			allowed, err := as.authRepo.CanRequestOTP(ctx, email)
+			if err != nil {
+				return api.Internal("OTP_RATE_LIMIT_CHECK_FAILED", "Failed to process OTP request").WithCause(err)
+			}
+			if !allowed {
+				return api.TooManyRequests("OTP_RATE_LIMITED", "Too many OTP requests. Please wait before retrying")
+			}
 
+			// Generate OTP
+			otp, err := GenerateOTP(6)
+			if err != nil {
+				return api.Internal("OTP_GENERATION_FAILED", "Failed to generate OTP").WithCause(err)
+			}
+			otpHash := hashOTP(otp)
+			expiresAt := pgtype.Timestamp{Time: time.Now().Add(10 * time.Minute), Valid: true}
+
+			//  Save OTP FIRST
+			err = as.authRepo.SaveOTP(ctx, email, otpHash, expiresAt)
+			if err != nil {
+				return api.Internal("OTP_SAVE_FAILED", "Failed to generate OTP").WithCause(err)
+			}
+
+			// Send email
+			if err := as.sendEmail(ctx, email, otp); err != nil {
+				return api.Internal("OTP_DELIVERY_FAILED", "Failed to send OTP").WithCause(err)
+			}
+		} else {
+			return api.Internal("Something Went Wrong", "Internal error")
+		}
+	}
+	if err == nil {
+		return api.Conflict("USER_ALREADY_EXISTS", "User with this email already exists")
+	}
 	// Rate limit check (critical to do this BEFORE generating OTP to prevent abuse)
-	allowed, err := as.authRepo.CanRequestOTP(ctx, email)
-	if err != nil {
-		return api.Internal("OTP_RATE_LIMIT_CHECK_FAILED", "Failed to process OTP request").WithCause(err)
-	}
-	if !allowed {
-		return api.TooManyRequests("OTP_RATE_LIMITED", "Too many OTP requests. Please wait before retrying")
-	}
 
-	// Generate OTP
-	otp, err := GenerateOTP(6)
-	if err != nil {
-		return api.Internal("OTP_GENERATION_FAILED", "Failed to generate OTP").WithCause(err)
-	}
-	otpHash := hashOTP(otp)
-	expiresAt := pgtype.Timestamp{Time: time.Now().Add(10 * time.Minute), Valid: true}
-
-	//  Save OTP FIRST
-	err = as.authRepo.SaveOTP(ctx, email, otpHash, expiresAt)
-	if err != nil {
-		return api.Internal("OTP_SAVE_FAILED", "Failed to generate OTP").WithCause(err)
-	}
-
-	// Send email
-	if err := as.sendEmail(ctx, email, otp); err != nil {
-		return api.Internal("OTP_DELIVERY_FAILED", "Failed to send OTP").WithCause(err)
-	}
 	return nil
 }
 
