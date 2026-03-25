@@ -75,6 +75,10 @@ func Internal(code, message string) *AppError {
 	return NewError(http.StatusInternalServerError, code, message)
 }
 
+func NotFound(code, message string) *AppError {
+	return NewError(http.StatusNotFound, code, message)
+}
+
 func AsAppError(err error) (*AppError, bool) {
 	var appErr *AppError
 	if errors.As(err, &appErr) {

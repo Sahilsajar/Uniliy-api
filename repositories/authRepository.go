@@ -118,3 +118,7 @@ func (ar *AuthRepo) GetUserByEmail(ctx context.Context, email string) (db.User, 
 func (ar *AuthRepo) GetUserByUserName(ctx context.Context, username string) (db.User, error) {
 	return ar.q.GetUserByUsername(ctx, username)
 }
+
+func (ar *AuthRepo) GetUserByID(ctx context.Context, id int64) (db.User, error) {
+	return ar.q.GetUserByID(ctx, id)
+}
