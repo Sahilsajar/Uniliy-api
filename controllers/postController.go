@@ -61,3 +61,23 @@ func (pc *PostController) TagUsers(ctx *gin.Context) error {
 	api.Success(ctx, http.StatusOK, "Users tagged successfully", nil)
 	return nil
 }
+
+func (pc *PostController) UploadTempMedia(ctx *gin.Context) error {
+	userID, err := strconv.ParseInt(ctx.GetString("user_id"), 10, 64)
+	if err != nil {
+		return api.BadRequest("INVALID_USER_ID", "Invalid user ID")
+	}
+
+	file, err := ctx.FormFile("file")
+	if err != nil {
+		return api.BadRequest("FILE_REQUIRED", "file is required")
+	}
+
+	media, err := pc.postService.UploadTempPostMedia(ctx.Request.Context(), userID, file)
+	if err != nil {
+		return err
+	}
+
+	api.Success(ctx, http.StatusCreated, "Media uploaded successfully", media)
+	return nil
+}

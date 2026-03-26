@@ -5,6 +5,7 @@ type CreatePostRequestDTO struct {
 	Body          string  `json:"body" binding:"required"`
 	Status        string  `json:"status" binding:"required"`
 	TaggedUserIDs []int64 `json:"tagged_user_ids"`
+	MediaIDs      []int64 `json:"media_ids"`
 }
 
 type TagUsersRequestDTO struct {
@@ -12,10 +13,17 @@ type TagUsersRequestDTO struct {
 }
 
 type PostResponseDTO struct {
-	ID            int64   `json:"id"`
-	Title         string  `json:"title"`
-	Body          string  `json:"body"`
-	Status        string  `json:"status"`
-	UserID        int64   `json:"user_id"`
-	TaggedUserIDs []int64 `json:"tagged_user_ids"`
+	ID            int64    `json:"id"`
+	Title         string   `json:"title"`
+	Body          string   `json:"body"`
+	Status        string   `json:"status"`
+	UserID        int64    `json:"user_id"`
+	TaggedUserIDs []int64  `json:"tagged_user_ids"`
+	ImageURLs     []string `json:"image_urls"`
+}
+
+type UploadPostMediaResponseDTO struct {
+	MediaID  int64  `json:"media_id"`
+	PublicID string `json:"public_id"`
+	URL      string `json:"url"`
 }

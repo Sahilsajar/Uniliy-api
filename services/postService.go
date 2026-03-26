@@ -2,9 +2,20 @@ package services
 
 import (
 	"context"
+	"crypto/sha1"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"mime/multipart"
+	"net/http"
+	"net/url"
+	"os"
+	"sort"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -17,22 +28,32 @@ import (
 
 type PostService struct {
 	postRepo *repositories.PostRepo
+	client   *http.Client
 }
 
 func NewPostService(postRepo *repositories.PostRepo) *PostService {
-	return &PostService{postRepo: postRepo}
+	return &PostService{
+		postRepo: postRepo,
+		client: &http.Client{
+			Timeout: 20 * time.Second,
+		},
+	}
 }
 
 func (ps *PostService) CreatePost(ctx context.Context, userID int64, req dto.CreatePostRequestDTO) (*dto.PostResponseDTO, error) {
 	taggedUserIDs := uniqueIDs(req.TaggedUserIDs)
 
-	post, err := ps.postRepo.CreatePostWithTags(ctx, db.CreatePostParams{
+	mediaIDs := uniqueIDs(req.MediaIDs)
+	post, mediaURLs, err := ps.postRepo.CreatePostWithAssets(ctx, db.CreatePostParams{
 		Title:  pgtype.Text{String: req.Title, Valid: true},
 		Body:   pgtype.Text{String: req.Body, Valid: true},
 		Status: pgtype.Text{String: req.Status, Valid: true},
 		UserID: userID,
-	}, taggedUserIDs, userID)
+	}, taggedUserIDs, userID, mediaIDs, userID)
 	if err != nil {
+		if errors.Is(err, repositories.ErrInvalidMediaSelection) {
+			return nil, api.BadRequest("INVALID_MEDIA_IDS", "One or more media ids are invalid or not temporary")
+		}
 		return nil, mapPostError(err)
 	}
 
@@ -43,6 +64,7 @@ func (ps *PostService) CreatePost(ctx context.Context, userID int64, req dto.Cre
 		Status:        post.Status.String,
 		UserID:        post.UserID,
 		TaggedUserIDs: taggedUserIDs,
+		ImageURLs:     mediaURLs,
 	}, nil
 }
 
@@ -108,4 +130,122 @@ func mapPostError(err error) error {
 	}
 
 	return api.Internal("POST_OPERATION_FAILED", "Failed to process post request").WithCause(fmt.Errorf("post operation failed: %w", err))
+}
+
+func (ps *PostService) UploadTempPostMedia(ctx context.Context, userID int64, fileHeader *multipart.FileHeader) (*dto.UploadPostMediaResponseDTO, error) {
+	file, err := fileHeader.Open()
+	if err != nil {
+		return nil, api.BadRequest("INVALID_FILE", "Failed to read uploaded file").WithCause(err)
+	}
+	defer file.Close()
+
+	publicID, secureURL, err := ps.uploadToCloudinary(ctx, userID, fileHeader.Filename, file)
+	if err != nil {
+		return nil, err
+	}
+
+	media, err := ps.postRepo.CreateTempMedia(ctx, publicID, secureURL, userID)
+	if err != nil {
+		return nil, api.Internal("TEMP_MEDIA_SAVE_FAILED", "Failed to store uploaded media").WithCause(err)
+	}
+
+	return &dto.UploadPostMediaResponseDTO{
+		MediaID:  media.ID,
+		PublicID: media.PublicID,
+		URL:      media.Url,
+	}, nil
+}
+
+func (ps *PostService) uploadToCloudinary(ctx context.Context, userID int64, filename string, file io.Reader) (string, string, error) {
+	cloudName := os.Getenv("CLOUDINARY_CLOUD_NAME")
+	apiKey := os.Getenv("CLOUDINARY_API_KEY")
+	apiSecret := os.Getenv("CLOUDINARY_API_SECRET")
+	if cloudName == "" || apiKey == "" || apiSecret == "" {
+		return "", "", api.Internal("CLOUDINARY_CONFIG_MISSING", "Cloudinary is not configured")
+	}
+
+	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
+	folder := "unilly/posts/temp"
+	publicID := fmt.Sprintf("user_%d_%d", userID, time.Now().UnixNano())
+	paramsToSign := map[string]string{
+		"public_id": publicID,
+		"folder":    folder,
+		"timestamp": timestamp,
+	}
+	signature := cloudinarySignature(paramsToSign, apiSecret)
+
+	form := url.Values{}
+	form.Set("api_key", apiKey)
+	form.Set("timestamp", timestamp)
+	form.Set("signature", signature)
+	form.Set("folder", folder)
+	form.Set("public_id", publicID)
+
+	bodyReader, bodyWriter := io.Pipe()
+	writer := multipart.NewWriter(bodyWriter)
+	// Write form data and file in a separate goroutine to avoid blocking
+	go func() {
+		defer bodyWriter.Close()
+		defer writer.Close()
+
+		for key, values := range form {
+			for _, value := range values {
+				_ = writer.WriteField(key, value)
+			}
+		}
+
+		part, err := writer.CreateFormFile("file", filename)
+		if err != nil {
+			_ = bodyWriter.CloseWithError(err)
+			return
+		}
+		if _, err := io.Copy(part, file); err != nil {
+			_ = bodyWriter.CloseWithError(err)
+			return
+		}
+	}()
+
+	endpoint := fmt.Sprintf("https://api.cloudinary.com/v1_1/%s/image/upload", cloudName)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bodyReader)
+	if err != nil {
+		return "", "", api.Internal("CLOUDINARY_UPLOAD_FAILED", "Failed to upload media").WithCause(err)
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	resp, err := ps.client.Do(req)
+	if err != nil {
+		return "", "", api.Internal("CLOUDINARY_UPLOAD_FAILED", "Failed to upload media").WithCause(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		return "", "", api.BadRequest("CLOUDINARY_UPLOAD_REJECTED", "Cloudinary rejected uploaded media")
+	}
+
+	var payload struct {
+		PublicID  string `json:"public_id"`
+		SecureURL string `json:"secure_url"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		return "", "", api.Internal("CLOUDINARY_RESPONSE_INVALID", "Invalid upload response").WithCause(err)
+	}
+	if payload.PublicID == "" || payload.SecureURL == "" {
+		return "", "", api.Internal("CLOUDINARY_RESPONSE_INVALID", "Upload response missing required fields")
+	}
+	return payload.PublicID, payload.SecureURL, nil
+}
+
+func cloudinarySignature(params map[string]string, apiSecret string) string {
+	keys := make([]string, 0, len(params))
+	for k := range params {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	parts := make([]string, 0, len(keys))
+	for _, k := range keys {
+		parts = append(parts, k+"="+params[k])
+	}
+	raw := strings.Join(parts, "&") + apiSecret
+	sum := sha1.Sum([]byte(raw))
+	return hex.EncodeToString(sum[:])
 }
