@@ -50,7 +50,12 @@ func main() {
 	authService := services.NewAuthService(authRepo)
 	authController := controllers.NewAuthController(authService)
 
+	postRepo := repositories.NewPostRepo(database, queries)
+	postService := services.NewPostService(postRepo)
+	postController := controllers.NewPostController(postService)
+
 	routes.AuthRoutes(r, authController)
+	routes.PostRoutes(r, postController)
 
 	r.Run("0.0.0.0:8080")
 }

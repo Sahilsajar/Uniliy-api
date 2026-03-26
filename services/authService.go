@@ -362,6 +362,8 @@ func (as *AuthService) Login(
 			user = &u
 		}
 	}
+
+	
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return "", "", api.Unauthorized("INVALID_CREDENTIALS", "Invalid email or password")
