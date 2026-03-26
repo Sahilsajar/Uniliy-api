@@ -41,7 +41,11 @@ func NewAuthService(authRepo *repositories.AuthRepo) *AuthService {
 }
 
 func (as *AuthService) SignUp(ctx context.Context, user dto.CreateUserRequestDTO) error {
-
+	// Ensure OTP verification
+	if err := as.requireVerifiedOTP(ctx, user.Email); err != nil {
+		return err
+	}
+	// Hash password
 	bycryptHash, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("failed to hash password: %w", err)
@@ -368,13 +372,17 @@ func (as *AuthService) Login(
 	if err != nil {
 		return "", "", api.Unauthorized("INVALID_CREDENTIALS", "Invalid email or password")
 	}
-	accessToken, err := utility.CreateAccessToken(fmt.Sprint(user.ID), user.Email)
+	accessToken, err := utility.GenerateAccessToken(int32(user.ID))
 	if err != nil {
 		return "", "", api.Internal("ACCESS_TOKEN_CREATION_FAILED", "Failed to create access token").WithCause(err)
 	}
-	refreshToken, err := utility.CreateRefreshToken(fmt.Sprint(user.ID), user.Email)
+	refreshToken, err := utility.GenerateRefreshToken(int32(user.ID))
 	if err != nil {
 		return "", "", api.Internal("REFRESH_TOKEN_CREATION_FAILED", "Failed to create refresh token").WithCause(err)
+	}
+	err = as.authRepo.CreateRefreshToken(ctx, int32(user.ID), hashOTP(refreshToken), time.Now().Add(7*24*time.Hour))
+	if err != nil {
+		return "", "", api.Internal("REFRESH_TOKEN_SAVE_FAILED", "Failed to save refresh token").WithCause(err)
 	}
 
 	return accessToken, refreshToken, nil
