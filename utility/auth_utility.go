@@ -28,7 +28,7 @@ func IsEmail(s string) bool {
 	return strings.Contains(s, "@")
 }
 
-func ValidateToken(tokenStr string) (string, string, error) {
+func ValidateToken(tokenStr string) (int32, error) {
 	secretKey := []byte(os.Getenv("JWT_ACCESS_SECRET"))
 	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -38,22 +38,18 @@ func ValidateToken(tokenStr string) (string, string, error) {
 	})
 
 	if err != nil {
-		return "", "", err
+		return 0,  err
 	}
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		userID, ok := claims["user_id"].(string)
-		email, emailOk := claims["email"].(string)
-		if !ok || !emailOk {
-			return "", "", jwt.ErrInvalidKey
-		}
+		userID, ok := claims["user_id"].(float64)
 		if !ok {
-			return "", "", jwt.ErrInvalidKeyType
+			return 0, jwt.ErrInvalidKeyType
 		}
-		return userID, email, nil
+		return int32(userID),  nil
 	}
 
-	return "", "", jwt.ErrInvalidKey
+	return 0, jwt.ErrInvalidKey
 }
 
 // 🔐 get secrets

@@ -54,6 +54,15 @@ type EventImage struct {
 	CreatedAt pgtype.Timestamptz
 }
 
+type Medium struct {
+	ID        int64
+	PublicID  string
+	Url       string
+	UserID    int64
+	IsTemp    bool
+	CreatedAt pgtype.Timestamptz
+}
+
 type OtpRequest struct {
 	ID          int64
 	Email       string
@@ -78,6 +87,7 @@ type Post struct {
 type PostImage struct {
 	ID        int64
 	ImageUrl  string
+	MediaID   pgtype.Int8
 	PostID    int64
 	CreatedAt pgtype.Timestamptz
 }
@@ -90,10 +100,11 @@ type PostLike struct {
 }
 
 type PostTag struct {
-	ID           int64
-	PostID       int64
-	TaggedUserID int64
-	CreatedAt    pgtype.Timestamptz
+	ID        int64
+	PostID    int64
+	UserID    int64
+	TaggedBy  int64
+	CreatedAt pgtype.Timestamp
 }
 
 type RefreshToken struct {

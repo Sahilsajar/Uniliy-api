@@ -50,7 +50,7 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 		token := strings.Split(tokenStr, "Bearer ")[1]
-		userID,email, err := utility.ValidateToken(token)
+		userID, err := utility.ValidateToken(token)
 		if err != nil {
 			c.AbortWithStatusJSON(401, errorResponse{
 				Success: false,
@@ -61,9 +61,7 @@ func AuthMiddleware() gin.HandlerFunc {
 			})
 			return
 		}
-
 		c.Set("user_id", userID)
-		c.Set("email", email)
 		c.Next()
 	}
 }

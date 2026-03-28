@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/unilly-api/api"
@@ -84,12 +83,10 @@ func (ac *AuthController) Login(ctx *gin.Context) error {
 }
 
 func (ac *AuthController) GetProfile(ctx *gin.Context) error {
-	userID := ctx.GetString("user_id")
-	userIDInt64, err := strconv.Atoi(userID)
-	if err != nil {
-		return api.BadRequest("INVALID_USER_ID", "Invalid user ID")
-	}
-	profile, err := ac.authService.GetProfile(ctx.Request.Context(), int64(userIDInt64))
+	userIDVal, _ := ctx.Get("user_id") // safe assumption
+	userID := userIDVal.(int32)
+	
+	profile, err := ac.authService.GetProfile(ctx.Request.Context(), int64(userID))
 	if err != nil {
 		return err
 	}
