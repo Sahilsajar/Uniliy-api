@@ -131,8 +131,6 @@ func (as *AuthService) GenerateAndSendOTP(
 	if err == nil {
 		return api.Conflict("USER_ALREADY_EXISTS", "User with this email already exists")
 	}
-	// Rate limit check (critical to do this BEFORE generating OTP to prevent abuse)
-
 	return nil
 }
 
@@ -308,11 +306,6 @@ func (as *AuthService) VerifyOTP(ctx context.Context, email string, otp string) 
 	err = as.authRepo.MarkOTPAsVerified(ctx, record.Email)
 	if err != nil {
 		return api.Internal("OTP_VERIFY_FAILED", "Failed to verify OTP").WithCause(err)
-	}
-
-	err = as.authRepo.DeleteOTP(ctx, record.Email)
-	if err != nil {
-		return api.Internal("OTP_CLEANUP_FAILED", "Failed to finalize OTP verification").WithCause(err)
 	}
 
 	return nil
