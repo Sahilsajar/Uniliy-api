@@ -3,6 +3,8 @@ package repositories
 import (
 	"context"
 	"errors"
+	"fmt"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 	db "github.com/unilly-api/db/sqlc"
 )
@@ -29,6 +31,8 @@ func (pr *PostRepo) CreatePost(
 	mediaIDs []int64,
 	ownerID int64,
 ) (db.Post, []string, error) {
+
+	fmt.Println("new defect", taggedBy, taggedUserIDs, mediaIDs, ownerID)
 
 	tx, err := pr.pool.Begin(ctx)
 	if err != nil {

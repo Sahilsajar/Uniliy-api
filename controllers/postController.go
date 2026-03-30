@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/unilly-api/api"
@@ -24,10 +23,8 @@ func (pc *PostController) CreatePost(ctx *gin.Context) error {
 		return err
 	}
 
-	userID, err := strconv.ParseInt(ctx.GetString("user_id"), 10, 64)
-	if err != nil {
-		return api.BadRequest("INVALID_USER_ID", "Invalid user ID")
-	}
+	userIDTemp, _ := ctx.Get("user_id")
+	userID := userIDTemp.(int64)
 
 	post, err := pc.postService.CreatePost(ctx.Request.Context(), userID, req)
 	if err != nil {
