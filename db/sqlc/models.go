@@ -109,7 +109,7 @@ type PostTag struct {
 
 type RefreshToken struct {
 	ID        int64
-	UserID    pgtype.Int4
+	UserID    pgtype.Int8
 	TokenHash string
 	ExpiresAt pgtype.Timestamp
 	CreatedAt pgtype.Timestamp

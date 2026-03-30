@@ -18,7 +18,7 @@ RETURNING id, user_id, token_hash, expires_at, created_at
 `
 
 type CreateRefreshTokenParams struct {
-	UserID    pgtype.Int4
+	UserID    pgtype.Int8
 	TokenHash string
 	ExpiresAt pgtype.Timestamp
 }

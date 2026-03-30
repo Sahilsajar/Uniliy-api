@@ -16,8 +16,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/unilly-api/api"
@@ -44,7 +42,7 @@ func (ps *PostService) CreatePost(ctx context.Context, userID int64, req dto.Cre
 	taggedUserIDs := uniqueIDs(req.TaggedUserIDs)
 
 	mediaIDs := uniqueIDs(req.MediaIDs)
-	post, mediaURLs, err := ps.postRepo.CreatePostWithAssets(ctx, db.CreatePostParams{
+	post, mediaURLs, err := ps.postRepo.CreatePost(ctx, db.CreatePostParams{
 		Title:  pgtype.Text{String: req.Title, Valid: true},
 		Body:   pgtype.Text{String: req.Body, Valid: true},
 		Status: pgtype.Text{String: req.Status, Valid: true},
@@ -68,30 +66,30 @@ func (ps *PostService) CreatePost(ctx context.Context, userID int64, req dto.Cre
 	}, nil
 }
 
-func (ps *PostService) TagUsersOnPost(ctx context.Context, userID, postID int64, req dto.TagUsersRequestDTO) error {
-	post, err := ps.postRepo.GetPostByID(ctx, postID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return api.NotFound("POST_NOT_FOUND", "Post not found")
-		}
-		return api.Internal("POST_LOOKUP_FAILED", "Failed to retrieve post").WithCause(err)
-	}
+// func (ps *PostService) TagUsersOnPost(ctx context.Context, userID, postID int64, req dto.TagUsersRequestDTO) error {
+// 	post, err := ps.postRepo.GetPostByID(ctx, postID)
+// 	if err != nil {
+// 		if errors.Is(err, pgx.ErrNoRows) {
+// 			return api.NotFound("POST_NOT_FOUND", "Post not found")
+// 		}
+// 		return api.Internal("POST_LOOKUP_FAILED", "Failed to retrieve post").WithCause(err)
+// 	}
 
-	if post.UserID != userID {
-		return api.Forbidden("TAG_NOT_ALLOWED", "Only the post owner can tag users")
-	}
+// 	if post.UserID != userID {
+// 		return api.Forbidden("TAG_NOT_ALLOWED", "Only the post owner can tag users")
+// 	}
 
-	userIDs := uniqueIDs(req.UserIDs)
-	if len(userIDs) == 0 {
-		return api.BadRequest("INVALID_TAG_USERS", "At least one user id is required")
-	}
+// 	userIDs := uniqueIDs(req.UserIDs)
+// 	if len(userIDs) == 0 {
+// 		return api.BadRequest("INVALID_TAG_USERS", "At least one user id is required")
+// 	}
 
-	if err := ps.postRepo.TagUsers(ctx, postID, userIDs, userID); err != nil {
-		return mapPostError(err)
-	}
+// 	if err := ps.postRepo.TagUsers(ctx, postID, userIDs, userID); err != nil {
+// 		return mapPostError(err)
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 func uniqueIDs(ids []int64) []int64 {
 	seen := make(map[int64]struct{}, len(ids))

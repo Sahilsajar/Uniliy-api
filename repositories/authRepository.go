@@ -131,9 +131,9 @@ func (r *AuthRepo) GetRefreshToken(ctx context.Context, token string) (*db.Refre
 	return &rt, nil
 }
 
-func (r *AuthRepo) CreateRefreshToken(ctx context.Context, userID int32, token string, exp time.Time) error {
+func (r *AuthRepo) CreateRefreshToken(ctx context.Context, userID int64, token string, exp time.Time) error {
 	_, err := r.q.CreateRefreshToken(ctx, db.CreateRefreshTokenParams{
-		UserID:    pgtype.Int4{Int32: userID, Valid: true},
+		UserID:    pgtype.Int8{Int64: int64(userID), Valid: true},
 		TokenHash: token,
 		ExpiresAt: pgtype.Timestamp{Time: exp, Valid: true},
 	})
