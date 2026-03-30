@@ -11,7 +11,7 @@ import (
 )
 
 type TokenData struct {
-	UserID int32
+	UserID int64
 	Type   string
 }
 
@@ -28,7 +28,7 @@ func IsEmail(s string) bool {
 	return strings.Contains(s, "@")
 }
 
-func ValidateToken(tokenStr string) (int32, error) {
+func ValidateToken(tokenStr string) (int64, error) {
 	secretKey := []byte(os.Getenv("JWT_ACCESS_SECRET"))
 	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -38,7 +38,7 @@ func ValidateToken(tokenStr string) (int32, error) {
 	})
 
 	if err != nil {
-		return 0,  err
+		return 0, err
 	}
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
@@ -46,7 +46,7 @@ func ValidateToken(tokenStr string) (int32, error) {
 		if !ok {
 			return 0, jwt.ErrInvalidKeyType
 		}
-		return int32(userID),  nil
+		return int64(userID), nil
 	}
 
 	return 0, jwt.ErrInvalidKey
@@ -70,7 +70,7 @@ func getRefreshSecret() ([]byte, error) {
 }
 
 // ✅ GENERATE ACCESS TOKEN
-func GenerateAccessToken(userID int32) (string, error) {
+func GenerateAccessToken(userID int64) (string, error) {
 	secret, err := getAccessSecret()
 	if err != nil {
 		return "", err
@@ -86,7 +86,7 @@ func GenerateAccessToken(userID int32) (string, error) {
 }
 
 // ✅ GENERATE REFRESH TOKEN
-func GenerateRefreshToken(userID int32) (string, error) {
+func GenerateRefreshToken(userID int64) (string, error) {
 	secret, err := getRefreshSecret()
 	if err != nil {
 		return "", err
@@ -135,7 +135,7 @@ func ValidateRefreshToken(tokenStr string) (*TokenData, error) {
 	}
 
 	return &TokenData{
-		UserID: int32(id),
+		UserID: int64(id),
 		Type:   tokenType,
 	}, nil
 }

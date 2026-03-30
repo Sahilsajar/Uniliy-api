@@ -63,10 +63,8 @@ func (pc *PostController) TagUsers(ctx *gin.Context) error {
 }
 
 func (pc *PostController) UploadTempMedia(ctx *gin.Context) error {
-	userID, err := strconv.ParseInt(ctx.GetString("user_id"), 10, 64)
-	if err != nil {
-		return api.BadRequest("INVALID_USER_ID", "Invalid user ID")
-	}
+	userIDtemp, _ := ctx.Get("user_id")
+	userID, _ := userIDtemp.(int64)
 
 	file, err := ctx.FormFile("file")
 	if err != nil {

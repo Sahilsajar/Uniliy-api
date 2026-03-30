@@ -84,8 +84,8 @@ func (ac *AuthController) Login(ctx *gin.Context) error {
 
 func (ac *AuthController) GetProfile(ctx *gin.Context) error {
 	userIDVal, _ := ctx.Get("user_id") // safe assumption
-	userID := userIDVal.(int32)
-	
+	userID := userIDVal.(int64)
+
 	profile, err := ac.authService.GetProfile(ctx.Request.Context(), int64(userID))
 	if err != nil {
 		return err

@@ -363,7 +363,6 @@ func (as *AuthService) Login(
 		}
 	}
 
-	
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return "", "", api.Unauthorized("INVALID_CREDENTIALS", "Invalid email or password")
@@ -374,15 +373,15 @@ func (as *AuthService) Login(
 	if err != nil {
 		return "", "", api.Unauthorized("INVALID_CREDENTIALS", "Invalid email or password")
 	}
-	accessToken, err := utility.GenerateAccessToken(int32(user.ID))
+	accessToken, err := utility.GenerateAccessToken(int64(user.ID))
 	if err != nil {
 		return "", "", api.Internal("ACCESS_TOKEN_CREATION_FAILED", "Failed to create access token").WithCause(err)
 	}
-	refreshToken, err := utility.GenerateRefreshToken(int32(user.ID))
+	refreshToken, err := utility.GenerateRefreshToken(int64(user.ID))
 	if err != nil {
 		return "", "", api.Internal("REFRESH_TOKEN_CREATION_FAILED", "Failed to create refresh token").WithCause(err)
 	}
-	err = as.authRepo.CreateRefreshToken(ctx, int32(user.ID), hashOTP(refreshToken), time.Now().Add(7*24*time.Hour))
+	err = as.authRepo.CreateRefreshToken(ctx, int64(user.ID), hashOTP(refreshToken), time.Now().Add(7*24*time.Hour))
 	if err != nil {
 		return "", "", api.Internal("REFRESH_TOKEN_SAVE_FAILED", "Failed to save refresh token").WithCause(err)
 	}
