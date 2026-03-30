@@ -44,6 +44,23 @@ func (q *Queries) CreatePost(ctx context.Context, arg CreatePostParams) (Post, e
 	return i, err
 }
 
+const createPostImagesBulk = `-- name: CreatePostImagesBulk :exec
+INSERT INTO post_images (post_id, media_id, image_url)
+SELECT $1, m.id, m.url
+FROM media m
+WHERE m.id = ANY($2::bigint[])
+`
+
+type CreatePostImagesBulkParams struct {
+	PostID  int64
+	Column2 []int64
+}
+
+func (q *Queries) CreatePostImagesBulk(ctx context.Context, arg CreatePostImagesBulkParams) error {
+	_, err := q.db.Exec(ctx, createPostImagesBulk, arg.PostID, arg.Column2)
+	return err
+}
+
 const createPostTag = `-- name: CreatePostTag :exec
 INSERT INTO post_tags (post_id, user_id, tagged_by)
 VALUES ($1, $2, $3)
@@ -57,6 +74,23 @@ type CreatePostTagParams struct {
 
 func (q *Queries) CreatePostTag(ctx context.Context, arg CreatePostTagParams) error {
 	_, err := q.db.Exec(ctx, createPostTag, arg.PostID, arg.UserID, arg.TaggedBy)
+	return err
+}
+
+const createPostTagsBulk = `-- name: CreatePostTagsBulk :exec
+INSERT INTO post_tags (post_id, user_id, tagged_by)
+SELECT $1, unnest($2::bigint[]), $3
+ON CONFLICT DO NOTHING
+`
+
+type CreatePostTagsBulkParams struct {
+	PostID   int64
+	Column2  []int64
+	TaggedBy int64
+}
+
+func (q *Queries) CreatePostTagsBulk(ctx context.Context, arg CreatePostTagsBulkParams) error {
+	_, err := q.db.Exec(ctx, createPostTagsBulk, arg.PostID, arg.Column2, arg.TaggedBy)
 	return err
 }
 
