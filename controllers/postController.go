@@ -38,29 +38,28 @@ func (pc *PostController) CreatePost(ctx *gin.Context) error {
 	return nil
 }
 
-func (pc *PostController) TagUsers(ctx *gin.Context) error {
-	postID, err := strconv.ParseInt(ctx.Param("postID"), 10, 64)
-	if err != nil || postID <= 0 {
-		return api.BadRequest("INVALID_POST_ID", "Invalid post ID")
-	}
+// func (pc *PostController) TagUsers(ctx *gin.Context) error {
+// 	postID, err := strconv.ParseInt(ctx.Param("postID"), 10, 64)
+// 	if err != nil || postID <= 0 {
+// 		return api.BadRequest("INVALID_POST_ID", "Invalid post ID")
+// 	}
 
-	var req dto.TagUsersRequestDTO
-	if err := api.BindJSON(ctx, &req); err != nil {
-		return err
-	}
+// 	var req dto.TagUsersRequestDTO
+// 	if err := api.BindJSON(ctx, &req); err != nil {
+// 		return err
+// 	}
 
-	userID, err := strconv.ParseInt(ctx.GetString("user_id"), 10, 64)
-	if err != nil {
-		return api.BadRequest("INVALID_USER_ID", "Invalid user ID")
-	}
+// 	userID, err := strconv.ParseInt(ctx.GetString("user_id"), 10, 64)
+// 	if err != nil {
+// 		return api.BadRequest("INVALID_USER_ID", "Invalid user ID")
+// 	}
 
-	if err := pc.postService.TagUsersOnPost(ctx.Request.Context(), userID, postID, req); err != nil {
-		return err
-	}
-
-	api.Success(ctx, http.StatusOK, "Users tagged successfully", nil)
-	return nil
-}
+// 	if err := pc.postService.TagUsersOnPost(ctx.Request.Context(), userID, postID, req); err != nil {
+// 		return err
+// 	}
+// 	api.Success(ctx, http.StatusOK, "Users tagged successfully", nil)
+// 	return nil
+// }
 
 func (pc *PostController) UploadTempMedia(ctx *gin.Context) error {
 	userID, err := strconv.ParseInt(ctx.GetString("user_id"), 10, 64)
