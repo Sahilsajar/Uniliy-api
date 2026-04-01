@@ -18,6 +18,7 @@ func ErrorHandler() gin.HandlerFunc {
 
 		appErr := NormalizeError(c.Errors.Last().Err)
 		c.JSON(appErr.StatusCode, errorResponse{
+			StatusCode: appErr.StatusCode,
 			Success: false,
 			Error: responseError{
 				Code:    appErr.Code,
@@ -41,6 +42,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		tokenStr := c.GetHeader("Authorization")
 		if tokenStr == "" {
 			c.AbortWithStatusJSON(401, errorResponse{
+				StatusCode: 401,
 				Success: false,
 				Error: responseError{
 					Code:    "UNAUTHORIZED",
