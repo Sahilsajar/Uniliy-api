@@ -437,12 +437,17 @@ func (as *AuthService) GetProfile(ctx context.Context, userID int64) (*dto.UserP
 		return nil, api.Internal("PROFILE_RETRIEVAL_FAILED", "Failed to retrieve profile").WithCause(err)
 	}
 	profile := &dto.UserProfileDTO{
-		ID:       fmt.Sprint(user.ID),
-		Email:    user.Email,
-		Username: user.Username,
-		Name:     user.Name.String,
-		Course:   user.Course.String,
-		YOP:      user.Yop.Int32,
+		Email:             user.Email,
+		Username:          user.Username,
+		Name:              user.Name.String,
+		Course:            user.Course.String,
+		YOP:               user.Yop.Int32,
+		Dob:               user.Dob.Time.Format("2006-01-02"),
+		ProfilePic:        user.ProfilePic.String,
+		CoverImg:          user.CoverImage.String,
+		CollegeId:         user.CollegeID.Int64,
+		CollegeIdCard:     user.CollegeIDCard.String,
+		VerficationStatus: user.VerificationStatus.String,
 	}
 	return profile, nil
 }
