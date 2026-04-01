@@ -111,3 +111,13 @@ func (ac *AuthController) RefreshToken(ctx *gin.Context) error {
 	})
 	return nil
 }
+
+func (ac *AuthController) GetUserByID(ctx *gin.Context) error {
+	idParam := ctx.Param("id")
+	profile, err := ac.authService.GetUserByID(ctx.Request.Context(), idParam)
+	if err != nil {
+		return err
+	}
+	api.Success(ctx, http.StatusOK, "User retrieved successfully", profile)
+	return nil
+}

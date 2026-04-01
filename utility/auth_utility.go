@@ -3,6 +3,7 @@ package utility
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -138,4 +139,12 @@ func ValidateRefreshToken(tokenStr string) (*TokenData, error) {
 		UserID: int64(id),
 		Type:   tokenType,
 	}, nil
+}
+
+func ParseIDParam(idStr string) (int64, error) {
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("invalid id parameter")
+	}
+	return id, nil
 }
