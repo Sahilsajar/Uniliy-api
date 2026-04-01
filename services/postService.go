@@ -16,6 +16,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/unilly-api/api"
@@ -247,3 +249,33 @@ func cloudinarySignature(params map[string]string, apiSecret string) string {
 	sum := sha1.Sum([]byte(raw))
 	return hex.EncodeToString(sum[:])
 }
+
+func (ps *PostService) GetPostByID(ctx context.Context, postID int64) (*dto.PostResponseDTO, error) {
+	post, err := ps.postRepo.GetPostByID(ctx, postID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, api.NotFound("POST_NOT_FOUND", "Post not found")
+		}
+		return nil, api.Internal("POST_LOOKUP_FAILED", "Failed to retrieve post").WithCause(err)
+	}
+
+	taggedUserIDs, err := ps.postRepo.GetTaggedUserIDs(ctx, postID)
+	if err != nil {
+		return nil, api.Internal("TAGGED_USERS_LOOKUP_FAILED", "Failed to retrieve tagged users").WithCause(err)
+	}
+
+	imageURLs, err := ps.postRepo.GetPostImageURLs(ctx, postID)
+	if err != nil {
+		return nil, api.Internal("POST_IMAGES_LOOKUP_FAILED", "Failed to retrieve post images").WithCause(err)
+	}
+
+	return &dto.PostResponseDTO{
+		ID:            post.ID,
+		Title:         post.Title.String,			
+		Body:          post.Body.String,
+		Status:        string(post.Status.PostStatus),
+		UserID:        post.UserID,
+		TaggedUserIDs: taggedUserIDs,
+		ImageURLs:     imageURLs,
+	}, nil
+}		

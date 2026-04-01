@@ -118,6 +118,15 @@ func (pr *PostRepo) GetPostByID(ctx context.Context, postID int64) (db.Post, err
 	return pr.q.GetPostByID(ctx, postID)
 }
 
+func (pr *PostRepo) GetTaggedUserIDs(ctx context.Context, postID int64) ([]int64, error) {
+	return pr.q.GetTaggedUserIDs(ctx, postID)
+}
+
+func (pr *PostRepo) GetPostImageURLs(ctx context.Context, postID int64) ([]string, error) {
+	return pr.q.GetPostImageURLs(ctx, postID)
+}
+
+
 // func (pr *PostRepo) TagUsers(ctx context.Context, postID int64, userIDs []int64, taggedBy int64) error {
 // 	for _, userID := range userIDs {
 // 		err := pr.q.CreatePostTag(ctx, db.CreatePostTagParams{

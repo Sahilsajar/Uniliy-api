@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/unilly-api/api"
@@ -75,3 +76,18 @@ func (pc *PostController) UploadTempMedia(ctx *gin.Context) error {
 	api.Success(ctx, http.StatusCreated, "Media uploaded successfully", media)
 	return nil
 }
+
+func (pc *PostController) GetPostByID(ctx *gin.Context) error {
+	postID, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
+	if err != nil || postID <= 0 {
+		return api.BadRequest("INVALID_POST_ID", "Invalid post ID")
+	}
+
+	post, err := pc.postService.GetPostByID(ctx.Request.Context(), postID)
+	if err != nil {
+		return err
+	}
+
+	api.Success(ctx, http.StatusOK, "Post retrieved successfully", post)
+	return nil
+}		
