@@ -45,7 +45,7 @@ func (ps *PostService) CreatePost(ctx context.Context, userID int64, req dto.Cre
 	post, mediaURLs, err := ps.postRepo.CreatePost(ctx, db.CreatePostParams{
 		Title:  pgtype.Text{String: req.Title, Valid: true},
 		Body:   pgtype.Text{String: req.Body, Valid: true},
-		Status: pgtype.Text{String: req.Status, Valid: true},
+		Status: db.NullPostStatus{PostStatus: db.PostStatusPublished, Valid: true},
 		UserID: userID,
 	}, taggedUserIDs, userID, mediaIDs, userID)
 	if err != nil {
@@ -59,7 +59,7 @@ func (ps *PostService) CreatePost(ctx context.Context, userID int64, req dto.Cre
 		ID:            post.ID,
 		Title:         post.Title.String,
 		Body:          post.Body.String,
-		Status:        post.Status.String,
+		Status:        string(post.Status.PostStatus),
 		UserID:        post.UserID,
 		TaggedUserIDs: taggedUserIDs,
 		ImageURLs:     mediaURLs,

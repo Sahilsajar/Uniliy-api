@@ -32,8 +32,6 @@ func (pr *PostRepo) CreatePost(
 	ownerID int64,
 ) (db.Post, []string, error) {
 
-	fmt.Println("new defect", taggedBy, taggedUserIDs, mediaIDs, ownerID)
-
 	tx, err := pr.pool.Begin(ctx)
 	if err != nil {
 		return db.Post{}, nil, err
@@ -45,7 +43,6 @@ func (pr *PostRepo) CreatePost(
 			_ = tx.Rollback(ctx)
 		}
 	}()
-
 	qtx := pr.q.WithTx(tx)
 
 	var mediaURLs []string
@@ -69,6 +66,7 @@ func (pr *PostRepo) CreatePost(
 			mediaURLs = append(mediaURLs, m.Url)
 		}
 	}
+	fmt.Printf("media urls %v\n", mediaURLs)
 
 	// Create post
 	post, err := qtx.CreatePost(ctx, arg)

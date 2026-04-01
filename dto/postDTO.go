@@ -1,9 +1,7 @@
 package dto
-
 type CreatePostRequestDTO struct {
 	Title         string  `json:"title" binding:"required"`
 	Body          string  `json:"body" binding:"required"`
-	Status        string  `json:"status" binding:"required"`
 	TaggedUserIDs []int64 `json:"tagged_user_ids"`
 	MediaIDs      []int64 `json:"media_ids"`
 }

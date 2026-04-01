@@ -20,7 +20,7 @@ RETURNING id, title, body, status, user_id, created_at, updated_at
 type CreatePostParams struct {
 	Title  pgtype.Text
 	Body   pgtype.Text
-	Status pgtype.Text
+	Status NullPostStatus
 	UserID int64
 }
 

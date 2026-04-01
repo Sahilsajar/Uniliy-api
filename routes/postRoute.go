@@ -11,5 +11,4 @@ func PostRoutes(r *gin.Engine, postController *controllers.PostController) {
 	postGroup.Use(api.AuthMiddleware())
 	postGroup.POST("/media/upload", api.Wrap(postController.UploadTempMedia))
 	postGroup.POST("", api.Wrap(postController.CreatePost))
-	// postGroup.POST("/:postID/tags", api.Wrap(postController.TagUsers))
 }
