@@ -20,6 +20,7 @@ type CreateUserDTO struct {
 }
 
 type UserProfileDTO struct {
+	ID                int64  `json:"id"`
 	Email             string `json:"email"`
 	Username          string `json:"username"`
 	Name              string `json:"name,omitempty"`

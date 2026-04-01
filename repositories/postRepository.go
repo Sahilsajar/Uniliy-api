@@ -32,7 +32,10 @@ func (pr *PostRepo) CreatePost(
 	ownerID int64,
 ) (db.Post, []string, error) {
 
-	fmt.Println("new defect", taggedBy, taggedUserIDs, mediaIDs, ownerID)
+	fmt.Printf("new defect %v\n", arg)
+	fmt.Printf("taggedUserIDs: %v\n", taggedUserIDs)
+	fmt.Printf("mediaIDs: %v\n", mediaIDs)
+	fmt.Printf("ownerID: %v\n", ownerID)
 
 	tx, err := pr.pool.Begin(ctx)
 	if err != nil {
