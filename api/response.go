@@ -8,17 +8,20 @@ import (
 )
 
 type successResponse struct {
+	StatusCode  int    `json:"statuscode"`
 	Success bool   `json:"success"`
 	Message string `json:"message,omitempty"`
 	Data    any    `json:"data,omitempty"`
 }
 
 type errorResponse struct {
+	StatusCode  int           `json:"statuscode"`
 	Success bool          `json:"success"`
 	Error   responseError `json:"error"`
 }
 
 type responseError struct {
+	StatusCode  int    `json:"statuscode"`
 	Code    string `json:"code"`
 	Message string `json:"message"`
 	Details any    `json:"details,omitempty"`
@@ -42,6 +45,7 @@ func Wrap(handler HandlerFunc) gin.HandlerFunc {
 
 func Success(c *gin.Context, statusCode int, message string, data any) {
 	c.JSON(statusCode, successResponse{
+		StatusCode: statusCode,
 		Success: true,
 		Message: message,
 		Data:    data,
