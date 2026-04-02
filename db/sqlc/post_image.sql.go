@@ -34,3 +34,35 @@ func (q *Queries) GetPostImageURLs(ctx context.Context, postID int64) ([]string,
 	}
 	return items, nil
 }
+
+const getPostImageURLsByPostIDs = `-- name: GetPostImageURLsByPostIDs :many
+SELECT post_id, image_url
+FROM post_images
+WHERE post_id = ANY($1::bigint[])
+ORDER BY post_id, id
+`
+
+type GetPostImageURLsByPostIDsRow struct {
+	PostID   int64
+	ImageUrl string
+}
+
+func (q *Queries) GetPostImageURLsByPostIDs(ctx context.Context, dollar_1 []int64) ([]GetPostImageURLsByPostIDsRow, error) {
+	rows, err := q.db.Query(ctx, getPostImageURLsByPostIDs, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetPostImageURLsByPostIDsRow
+	for rows.Next() {
+		var i GetPostImageURLsByPostIDsRow
+		if err := rows.Scan(&i.PostID, &i.ImageUrl); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

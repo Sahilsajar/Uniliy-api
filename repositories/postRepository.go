@@ -3,7 +3,6 @@ package repositories
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	db "github.com/unilly-api/db/sqlc"
@@ -66,8 +65,6 @@ func (pr *PostRepo) CreatePost(
 			mediaURLs = append(mediaURLs, m.Url)
 		}
 	}
-	fmt.Printf("media urls %v\n", mediaURLs)
-
 	// Create post
 	post, err := qtx.CreatePost(ctx, arg)
 	if err != nil {
@@ -118,6 +115,37 @@ func (pr *PostRepo) GetPostByID(ctx context.Context, postID int64) (db.Post, err
 	return pr.q.GetPostByID(ctx, postID)
 }
 
+func (pr *PostRepo) GetPostDetailsByID(ctx context.Context, postID, viewerUserID int64) (db.GetPostDetailsByIDRow, error) {
+	return pr.q.GetPostDetailsByID(ctx, db.GetPostDetailsByIDParams{
+		ID:     postID,
+		UserID: viewerUserID,
+	})
+}
+
+func (pr *PostRepo) ListFeedPosts(ctx context.Context, viewerUserID int64, scope string, page, limit int32) ([]db.ListFeedPostsRow, int64, error) {
+	offset := (page - 1) * limit
+
+	posts, err := pr.q.ListFeedPosts(ctx, db.ListFeedPostsParams{
+		ViewerUserID: viewerUserID,
+		Scope:        scope,
+		OffsetCount:  offset,
+		LimitCount:   limit,
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+
+	total, err := pr.q.CountFeedPosts(ctx, db.CountFeedPostsParams{
+		Scope:        scope,
+		ViewerUserID: viewerUserID,
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return posts, total, nil
+}
+
 func (pr *PostRepo) GetTaggedUserIDs(ctx context.Context, postID int64) ([]int64, error) {
 	return pr.q.GetTaggedUserIDs(ctx, postID)
 }
@@ -126,6 +154,13 @@ func (pr *PostRepo) GetPostImageURLs(ctx context.Context, postID int64) ([]strin
 	return pr.q.GetPostImageURLs(ctx, postID)
 }
 
+func (pr *PostRepo) GetPostImageURLsByPostIDs(ctx context.Context, postIDs []int64) ([]db.GetPostImageURLsByPostIDsRow, error) {
+	return pr.q.GetPostImageURLsByPostIDs(ctx, postIDs)
+}
+
+func (pr *PostRepo) GetTaggedUsersByPostIDs(ctx context.Context, postIDs []int64) ([]db.GetTaggedUsersByPostIDsRow, error) {
+	return pr.q.GetTaggedUsersByPostIDs(ctx, postIDs)
+}
 
 // func (pr *PostRepo) TagUsers(ctx context.Context, postID int64, userIDs []int64, taggedBy int64) error {
 // 	for _, userID := range userIDs {

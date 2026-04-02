@@ -7,6 +7,8 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const getTaggedUserIDs = `-- name: GetTaggedUserIDs :many
@@ -28,6 +30,53 @@ func (q *Queries) GetTaggedUserIDs(ctx context.Context, postID int64) ([]int64, 
 			return nil, err
 		}
 		items = append(items, user_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getTaggedUsersByPostIDs = `-- name: GetTaggedUsersByPostIDs :many
+SELECT
+    pt.post_id,
+    u.id,
+    u.username,
+    u.name,
+    u.profile_pic
+FROM post_tags pt
+JOIN users u ON u.id = pt.user_id
+WHERE pt.post_id = ANY($1::bigint[])
+ORDER BY pt.post_id, pt.id
+`
+
+type GetTaggedUsersByPostIDsRow struct {
+	PostID     int64
+	ID         int64
+	Username   string
+	Name       pgtype.Text
+	ProfilePic pgtype.Text
+}
+
+func (q *Queries) GetTaggedUsersByPostIDs(ctx context.Context, dollar_1 []int64) ([]GetTaggedUsersByPostIDsRow, error) {
+	rows, err := q.db.Query(ctx, getTaggedUsersByPostIDs, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetTaggedUsersByPostIDsRow
+	for rows.Next() {
+		var i GetTaggedUsersByPostIDsRow
+		if err := rows.Scan(
+			&i.PostID,
+			&i.ID,
+			&i.Username,
+			&i.Name,
+			&i.ProfilePic,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
