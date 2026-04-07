@@ -3,7 +3,6 @@ package repositories
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	db "github.com/unilly-api/db/sqlc"
@@ -32,11 +31,6 @@ func (pr *PostRepo) CreatePost(
 	ownerID int64,
 ) (db.Post, []string, error) {
 
-	fmt.Printf("new defect %v\n", arg)
-	fmt.Printf("taggedUserIDs: %v\n", taggedUserIDs)
-	fmt.Printf("mediaIDs: %v\n", mediaIDs)
-	fmt.Printf("ownerID: %v\n", ownerID)
-
 	tx, err := pr.pool.Begin(ctx)
 	if err != nil {
 		return db.Post{}, nil, err
@@ -48,7 +42,6 @@ func (pr *PostRepo) CreatePost(
 			_ = tx.Rollback(ctx)
 		}
 	}()
-
 	qtx := pr.q.WithTx(tx)
 
 	var mediaURLs []string
@@ -72,7 +65,6 @@ func (pr *PostRepo) CreatePost(
 			mediaURLs = append(mediaURLs, m.Url)
 		}
 	}
-
 	// Create post
 	post, err := qtx.CreatePost(ctx, arg)
 	if err != nil {
@@ -121,6 +113,53 @@ func (pr *PostRepo) CreatePost(
 
 func (pr *PostRepo) GetPostByID(ctx context.Context, postID int64) (db.Post, error) {
 	return pr.q.GetPostByID(ctx, postID)
+}
+
+func (pr *PostRepo) GetPostDetailsByID(ctx context.Context, postID, viewerUserID int64) (db.GetPostDetailsByIDRow, error) {
+	return pr.q.GetPostDetailsByID(ctx, db.GetPostDetailsByIDParams{
+		ID:     postID,
+		UserID: viewerUserID,
+	})
+}
+
+func (pr *PostRepo) ListFeedPosts(ctx context.Context, viewerUserID int64, scope string, page, limit int32) ([]db.ListFeedPostsRow, int64, error) {
+	offset := (page - 1) * limit
+
+	posts, err := pr.q.ListFeedPosts(ctx, db.ListFeedPostsParams{
+		ViewerUserID: viewerUserID,
+		Scope:        scope,
+		OffsetCount:  offset,
+		LimitCount:   limit,
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+
+	total, err := pr.q.CountFeedPosts(ctx, db.CountFeedPostsParams{
+		Scope:        scope,
+		ViewerUserID: viewerUserID,
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return posts, total, nil
+}
+
+func (pr *PostRepo) GetTaggedUserIDs(ctx context.Context, postID int64) ([]int64, error) {
+	return pr.q.GetTaggedUserIDs(ctx, postID)
+}
+
+func (pr *PostRepo) GetPostImageURLs(ctx context.Context, postID int64) ([]string, error) {
+	return pr.q.GetPostImageURLs(ctx, postID)
+}
+
+func (pr *PostRepo) GetPostImageURLsByPostIDs(ctx context.Context, postIDs []int64) ([]db.GetPostImageURLsByPostIDsRow, error) {
+	return pr.q.GetPostImageURLsByPostIDs(ctx, postIDs)
+}
+
+func (pr *PostRepo) GetTaggedUsersByPostIDs(ctx context.Context, postIDs []int64) ([]db.GetTaggedUsersByPostIDsRow, error) {
+	return pr.q.GetTaggedUsersByPostIDs(ctx, postIDs)
 }
 
 // func (pr *PostRepo) TagUsers(ctx context.Context, postID int64, userIDs []int64, taggedBy int64) error {

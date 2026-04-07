@@ -2,6 +2,8 @@ package controllers
 
 import (
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/unilly-api/api"
@@ -73,5 +75,56 @@ func (pc *PostController) UploadTempMedia(ctx *gin.Context) error {
 	}
 
 	api.Success(ctx, http.StatusCreated, "Media uploaded successfully", media)
+	return nil
+}
+
+func (pc *PostController) GetPostByID(ctx *gin.Context) error {
+	postID, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
+	if err != nil || postID <= 0 {
+		return api.BadRequest("INVALID_POST_ID", "Invalid post ID")
+	}
+
+	userIDTemp, _ := ctx.Get("user_id")
+	userID := userIDTemp.(int64)
+
+	post, err := pc.postService.GetPostByID(ctx.Request.Context(), postID, userID)
+	if err != nil {
+		return err
+	}
+
+	api.Success(ctx, http.StatusOK, "Post retrieved successfully", post)
+	return nil
+}
+
+func (pc *PostController) GetFeed(ctx *gin.Context) error {
+	userIDTemp, _ := ctx.Get("user_id")
+	userID := userIDTemp.(int64)
+
+	page := int32(1)
+	if rawPage := ctx.Query("page"); rawPage != "" {
+		parsed, err := strconv.ParseInt(rawPage, 10, 32)
+		if err != nil || parsed <= 0 {
+			return api.BadRequest("INVALID_PAGE", "page must be a positive integer")
+		}
+		page = int32(parsed)
+	}
+
+	limit := int32(20)
+	if rawLimit := ctx.Query("limit"); rawLimit != "" {
+		parsed, err := strconv.ParseInt(rawLimit, 10, 32)
+		if err != nil || parsed <= 0 {
+			return api.BadRequest("INVALID_LIMIT", "limit must be a positive integer")
+		}
+		limit = int32(parsed)
+	}
+
+	scope := strings.ToLower(strings.TrimSpace(ctx.DefaultQuery("scope", "all")))
+
+	feed, err := pc.postService.GetFeed(ctx.Request.Context(), userID, scope, page, limit)
+	if err != nil {
+		return err
+	}
+
+	api.Success(ctx, http.StatusOK, "Post feed retrieved successfully", feed)
 	return nil
 }

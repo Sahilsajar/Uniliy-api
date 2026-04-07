@@ -11,6 +11,40 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countFeedPosts = `-- name: CountFeedPosts :one
+SELECT COUNT(*)::bigint
+FROM posts p
+WHERE p.status = 'published'
+  AND (
+      $1 = 'all'
+      OR ($1 = 'mine' AND p.user_id = $2)
+      OR (
+          $1 = 'following'
+          AND (
+              p.user_id = $2
+              OR EXISTS (
+                  SELECT 1
+                  FROM user_follows uf
+                  WHERE uf.follower_user_id = $2
+                    AND uf.following_user_id = p.user_id
+              )
+          )
+      )
+  )
+`
+
+type CountFeedPostsParams struct {
+	Scope        interface{}
+	ViewerUserID int64
+}
+
+func (q *Queries) CountFeedPosts(ctx context.Context, arg CountFeedPostsParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countFeedPosts, arg.Scope, arg.ViewerUserID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const createPost = `-- name: CreatePost :one
 INSERT INTO posts (title, body, status, user_id)
 VALUES ($1, $2, $3, $4)
@@ -20,7 +54,7 @@ RETURNING id, title, body, status, user_id, created_at, updated_at
 type CreatePostParams struct {
 	Title  pgtype.Text
 	Body   pgtype.Text
-	Status pgtype.Text
+	Status NullPostStatus
 	UserID int64
 }
 
@@ -113,4 +147,197 @@ func (q *Queries) GetPostByID(ctx context.Context, id int64) (Post, error) {
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const getPostDetailsByID = `-- name: GetPostDetailsByID :one
+SELECT
+    p.id,
+    p.title,
+    p.body,
+    p.status,
+    p.user_id,
+    p.created_at,
+    p.updated_at,
+    u.username,
+    u.name,
+    u.profile_pic,
+    COALESCE(pl.likes_count, 0)::bigint AS likes_count,
+    COALESCE(pc.comments_count, 0)::bigint AS comments_count,
+    EXISTS (
+        SELECT 1
+        FROM post_likes viewer_like
+        WHERE viewer_like.post_id = p.id
+          AND viewer_like.user_id = $2
+    ) AS is_liked
+FROM posts p
+JOIN users u ON u.id = p.user_id
+LEFT JOIN (
+    SELECT post_id, COUNT(*)::bigint AS likes_count
+    FROM post_likes
+    GROUP BY post_id
+) pl ON pl.post_id = p.id
+LEFT JOIN (
+    SELECT post_id, COUNT(*)::bigint AS comments_count
+    FROM comments
+    GROUP BY post_id
+) pc ON pc.post_id = p.id
+WHERE p.id = $1
+`
+
+type GetPostDetailsByIDParams struct {
+	ID     int64
+	UserID int64
+}
+
+type GetPostDetailsByIDRow struct {
+	ID            int64
+	Title         pgtype.Text
+	Body          pgtype.Text
+	Status        NullPostStatus
+	UserID        int64
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
+	Username      string
+	Name          pgtype.Text
+	ProfilePic    pgtype.Text
+	LikesCount    int64
+	CommentsCount int64
+	IsLiked       bool
+}
+
+func (q *Queries) GetPostDetailsByID(ctx context.Context, arg GetPostDetailsByIDParams) (GetPostDetailsByIDRow, error) {
+	row := q.db.QueryRow(ctx, getPostDetailsByID, arg.ID, arg.UserID)
+	var i GetPostDetailsByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.Body,
+		&i.Status,
+		&i.UserID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Username,
+		&i.Name,
+		&i.ProfilePic,
+		&i.LikesCount,
+		&i.CommentsCount,
+		&i.IsLiked,
+	)
+	return i, err
+}
+
+const listFeedPosts = `-- name: ListFeedPosts :many
+SELECT
+    p.id,
+    p.title,
+    p.body,
+    p.status,
+    p.user_id,
+    p.created_at,
+    p.updated_at,
+    u.username,
+    u.name,
+    u.profile_pic,
+    COALESCE(pl.likes_count, 0)::bigint AS likes_count,
+    COALESCE(pc.comments_count, 0)::bigint AS comments_count,
+    EXISTS (
+        SELECT 1
+        FROM post_likes viewer_like
+        WHERE viewer_like.post_id = p.id
+          AND viewer_like.user_id = $1
+    ) AS is_liked
+FROM posts p
+JOIN users u ON u.id = p.user_id
+LEFT JOIN (
+    SELECT post_id, COUNT(*)::bigint AS likes_count
+    FROM post_likes
+    GROUP BY post_id
+) pl ON pl.post_id = p.id
+LEFT JOIN (
+    SELECT post_id, COUNT(*)::bigint AS comments_count
+    FROM comments
+    GROUP BY post_id
+) pc ON pc.post_id = p.id
+WHERE p.status = 'published'
+  AND (
+      $2 = 'all'
+      OR ($2 = 'mine' AND p.user_id = $1)
+      OR (
+          $2 = 'following'
+          AND (
+              p.user_id = $1
+              OR EXISTS (
+                  SELECT 1
+                  FROM user_follows uf
+                  WHERE uf.follower_user_id = $1
+                    AND uf.following_user_id = p.user_id
+              )
+          )
+      )
+  )
+ORDER BY p.created_at DESC, p.id DESC
+LIMIT $4
+OFFSET $3
+`
+
+type ListFeedPostsParams struct {
+	ViewerUserID int64
+	Scope        interface{}
+	OffsetCount  int32
+	LimitCount   int32
+}
+
+type ListFeedPostsRow struct {
+	ID            int64
+	Title         pgtype.Text
+	Body          pgtype.Text
+	Status        NullPostStatus
+	UserID        int64
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
+	Username      string
+	Name          pgtype.Text
+	ProfilePic    pgtype.Text
+	LikesCount    int64
+	CommentsCount int64
+	IsLiked       bool
+}
+
+func (q *Queries) ListFeedPosts(ctx context.Context, arg ListFeedPostsParams) ([]ListFeedPostsRow, error) {
+	rows, err := q.db.Query(ctx, listFeedPosts,
+		arg.ViewerUserID,
+		arg.Scope,
+		arg.OffsetCount,
+		arg.LimitCount,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListFeedPostsRow
+	for rows.Next() {
+		var i ListFeedPostsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Body,
+			&i.Status,
+			&i.UserID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Username,
+			&i.Name,
+			&i.ProfilePic,
+			&i.LikesCount,
+			&i.CommentsCount,
+			&i.IsLiked,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
