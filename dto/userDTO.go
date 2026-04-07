@@ -20,10 +20,16 @@ type CreateUserDTO struct {
 }
 
 type UserProfileDTO struct {
-	ID       string `json:"id"`
-	Email    string `json:"email"`
-	Username string `json:"username"`
-	Name     string `json:"name,omitempty"`
-	Course   string `json:"course,omitempty"`
-	YOP      int32  `json:"yop,omitempty"`
+	ID                int64  `json:"id"`
+	Email             string `json:"email"`
+	Username          string `json:"username"`
+	Name              string `json:"name,omitempty"`
+	Course            string `json:"course,omitempty"`
+	YOP               int32  `json:"yop,omitempty"`
+	Dob               string `json:"dob,omitempty"`
+	ProfilePic        string `json:"profile_pic,omitempty"`
+	CoverImg          string `json:"cover_image,omitempty"`
+	CollegeId         int64  `json:"college_id,omitempty"`
+	CollegeIdCard     string `json:"college_id_card,omitempty"`
+	VerficationStatus string `json:"verification_status,omitempty"`
 }

@@ -131,8 +131,6 @@ func (as *AuthService) GenerateAndSendOTP(
 	if err == nil {
 		return api.Conflict("USER_ALREADY_EXISTS", "User with this email already exists")
 	}
-	// Rate limit check (critical to do this BEFORE generating OTP to prevent abuse)
-
 	return nil
 }
 
@@ -310,11 +308,6 @@ func (as *AuthService) VerifyOTP(ctx context.Context, email string, otp string) 
 		return api.Internal("OTP_VERIFY_FAILED", "Failed to verify OTP").WithCause(err)
 	}
 
-	err = as.authRepo.DeleteOTP(ctx, record.Email)
-	if err != nil {
-		return api.Internal("OTP_CLEANUP_FAILED", "Failed to finalize OTP verification").WithCause(err)
-	}
-
 	return nil
 }
 
@@ -444,12 +437,46 @@ func (as *AuthService) GetProfile(ctx context.Context, userID int64) (*dto.UserP
 		return nil, api.Internal("PROFILE_RETRIEVAL_FAILED", "Failed to retrieve profile").WithCause(err)
 	}
 	profile := &dto.UserProfileDTO{
-		ID:       fmt.Sprint(user.ID),
-		Email:    user.Email,
-		Username: user.Username,
-		Name:     user.Name.String,
-		Course:   user.Course.String,
-		YOP:      user.Yop.Int32,
+		Email:             user.Email,
+		Username:          user.Username,
+		Name:              user.Name.String,
+		Course:            user.Course.String,
+		YOP:               user.Yop.Int32,
+		Dob:               user.Dob.Time.Format("2006-01-02"),
+		ProfilePic:        user.ProfilePic.String,
+		CoverImg:          user.CoverImage.String,
+		CollegeId:         user.CollegeID.Int64,
+		CollegeIdCard:     user.CollegeIDCard.String,
+		VerficationStatus: user.VerificationStatus.String,
+	}
+	return profile, nil
+}
+
+func (as *AuthService) GetUserByID(ctx context.Context, idParam string) (*dto.UserProfileDTO, error) {
+	id, err := utility.ParseIDParam(idParam)
+	if err != nil {
+		return nil, api.BadRequest("INVALID_USER_ID", "Invalid user ID")
+	}
+	user, err := as.authRepo.GetUserByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, api.NotFound("USER_NOT_FOUND", "User not found")
+		}
+		return nil, api.Internal("USER_RETRIEVAL_FAILED", "Failed to retrieve user").WithCause(err)
+	}
+	profile := &dto.UserProfileDTO{
+		ID:                user.ID,
+		Email:             user.Email,
+		Username:          user.Username,
+		Name:              user.Name.String,
+		Course:            user.Course.String,
+		YOP:               user.Yop.Int32,
+		Dob:               user.Dob.Time.Format("2006-01-02"),
+		ProfilePic:        user.ProfilePic.String,
+		CoverImg:          user.CoverImage.String,
+		CollegeId:         user.CollegeID.Int64,
+		CollegeIdCard:     user.CollegeIDCard.String,
+		VerficationStatus: user.VerificationStatus.String,
 	}
 	return profile, nil
 }
