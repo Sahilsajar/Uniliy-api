@@ -201,3 +201,91 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 	)
 	return i, err
 }
+
+const getUserFollowers = `-- name: GetUserFollowers :many
+SELECT u.id, u.username, u.email, u.name, u.dob, u.profile_pic, u.cover_image, u.password_hash, u.course, u.yop, u.college_id, u.college_id_card, u.created_at, u.updated_at, u.verification_status, u.is_active
+FROM users u
+JOIN user_follows uf ON u.id = uf.follower_user_id
+WHERE uf.following_user_id = $1
+`
+
+func (q *Queries) GetUserFollowers(ctx context.Context, followingUserID int64) ([]User, error) {
+	rows, err := q.db.Query(ctx, getUserFollowers, followingUserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []User
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.Username,
+			&i.Email,
+			&i.Name,
+			&i.Dob,
+			&i.ProfilePic,
+			&i.CoverImage,
+			&i.PasswordHash,
+			&i.Course,
+			&i.Yop,
+			&i.CollegeID,
+			&i.CollegeIDCard,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.VerificationStatus,
+			&i.IsActive,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getUserFollowing = `-- name: GetUserFollowing :many
+SELECT u.id, u.username, u.email, u.name, u.dob, u.profile_pic, u.cover_image, u.password_hash, u.course, u.yop, u.college_id, u.college_id_card, u.created_at, u.updated_at, u.verification_status, u.is_active
+FROM users u
+JOIN user_follows uf ON u.id = uf.following_user_id
+WHERE uf.follower_user_id = $1
+`
+
+func (q *Queries) GetUserFollowing(ctx context.Context, followerUserID int64) ([]User, error) {
+	rows, err := q.db.Query(ctx, getUserFollowing, followerUserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []User
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.Username,
+			&i.Email,
+			&i.Name,
+			&i.Dob,
+			&i.ProfilePic,
+			&i.CoverImage,
+			&i.PasswordHash,
+			&i.Course,
+			&i.Yop,
+			&i.CollegeID,
+			&i.CollegeIDCard,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.VerificationStatus,
+			&i.IsActive,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

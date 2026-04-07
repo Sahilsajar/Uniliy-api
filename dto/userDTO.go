@@ -1,5 +1,7 @@
 package dto
 
+import db "github.com/unilly-api/db/sqlc"
+
 type CreateUserRequestDTO struct {
 	Email           string `json:"email" binding:"required,email"`
 	Username        string `json:"username" binding:"required"`
@@ -32,4 +34,12 @@ type UserProfileDTO struct {
 	CollegeId         int64  `json:"college_id,omitempty"`
 	CollegeIdCard     string `json:"college_id_card,omitempty"`
 	VerficationStatus string `json:"verification_status,omitempty"`
+}
+
+type GetFollowersResponseDTO struct {
+	Followers []db.User `json:"followers"`
+}
+
+type GetFollowingResponseDTO struct {
+	Following []db.User `json:"following"`
 }

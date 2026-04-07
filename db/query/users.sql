@@ -24,3 +24,15 @@ SELECT * FROM users WHERE username = $1;
 
 -- name: GetUserByID :one
 SELECT * FROM users WHERE id = $1;
+
+-- name: GetUserFollowers :many
+SELECT u.*
+FROM users u
+JOIN user_follows uf ON u.id = uf.follower_user_id
+WHERE uf.following_user_id = $1;
+
+-- name: GetUserFollowing :many
+SELECT u.*
+FROM users u
+JOIN user_follows uf ON u.id = uf.following_user_id
+WHERE uf.follower_user_id = $1;
