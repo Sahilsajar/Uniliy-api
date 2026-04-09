@@ -11,6 +11,49 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const addComment = `-- name: AddComment :one
+INSERT INTO comments (message, post_id, user_id, parent_comment_id)
+VALUES ($1, $2, $3, $4)
+RETURNING id, post_id, user_id, message, parent_comment_id, created_at, updated_at
+`
+
+type AddCommentParams struct {
+	Message         string
+	PostID          int64
+	UserID          int64
+	ParentCommentID pgtype.Int8
+}
+
+type AddCommentRow struct {
+	ID              int64
+	PostID          int64
+	UserID          int64
+	Message         string
+	ParentCommentID pgtype.Int8
+	CreatedAt       pgtype.Timestamptz
+	UpdatedAt       pgtype.Timestamptz
+}
+
+func (q *Queries) AddComment(ctx context.Context, arg AddCommentParams) (AddCommentRow, error) {
+	row := q.db.QueryRow(ctx, addComment,
+		arg.Message,
+		arg.PostID,
+		arg.UserID,
+		arg.ParentCommentID,
+	)
+	var i AddCommentRow
+	err := row.Scan(
+		&i.ID,
+		&i.PostID,
+		&i.UserID,
+		&i.Message,
+		&i.ParentCommentID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const countFeedPosts = `-- name: CountFeedPosts :one
 SELECT COUNT(*)::bigint
 FROM posts p
@@ -126,6 +169,96 @@ type CreatePostTagsBulkParams struct {
 func (q *Queries) CreatePostTagsBulk(ctx context.Context, arg CreatePostTagsBulkParams) error {
 	_, err := q.db.Exec(ctx, createPostTagsBulk, arg.PostID, arg.Column2, arg.TaggedBy)
 	return err
+}
+
+const getCommentByID = `-- name: GetCommentByID :one
+SELECT c.id, c.post_id, c.user_id, c.message, c.parent_comment_id, c.created_at, c.updated_at, u.username, u.name, u.profile_pic
+FROM comments c
+LEFT JOIN users u ON u.id = c.user_id
+WHERE c.id = $1
+`
+
+type GetCommentByIDRow struct {
+	ID              int64
+	PostID          int64
+	UserID          int64
+	Message         string
+	ParentCommentID pgtype.Int8
+	CreatedAt       pgtype.Timestamptz
+	UpdatedAt       pgtype.Timestamptz
+	Username        pgtype.Text
+	Name            pgtype.Text
+	ProfilePic      pgtype.Text
+}
+
+func (q *Queries) GetCommentByID(ctx context.Context, id int64) (GetCommentByIDRow, error) {
+	row := q.db.QueryRow(ctx, getCommentByID, id)
+	var i GetCommentByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.PostID,
+		&i.UserID,
+		&i.Message,
+		&i.ParentCommentID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Username,
+		&i.Name,
+		&i.ProfilePic,
+	)
+	return i, err
+}
+
+const getCommentsByPostID = `-- name: GetCommentsByPostID :many
+SELECT c.id, c.post_id, c.user_id, c.message, c.parent_comment_id, c.created_at, c.updated_at, u.username, u.name, u.profile_pic
+FROM comments c
+LEFT JOIN users u ON u.id = c.user_id
+WHERE c.post_id = $1
+ORDER BY c.created_at ASC, c.id ASC
+`
+
+type GetCommentsByPostIDRow struct {
+	ID              int64
+	PostID          int64
+	UserID          int64
+	Message         string
+	ParentCommentID pgtype.Int8
+	CreatedAt       pgtype.Timestamptz
+	UpdatedAt       pgtype.Timestamptz
+	Username        pgtype.Text
+	Name            pgtype.Text
+	ProfilePic      pgtype.Text
+}
+
+func (q *Queries) GetCommentsByPostID(ctx context.Context, postID int64) ([]GetCommentsByPostIDRow, error) {
+	rows, err := q.db.Query(ctx, getCommentsByPostID, postID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetCommentsByPostIDRow
+	for rows.Next() {
+		var i GetCommentsByPostIDRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PostID,
+			&i.UserID,
+			&i.Message,
+			&i.ParentCommentID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Username,
+			&i.Name,
+			&i.ProfilePic,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getPostByID = `-- name: GetPostByID :one

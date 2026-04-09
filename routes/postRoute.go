@@ -13,4 +13,5 @@ func PostRoutes(r *gin.Engine, postController *controllers.PostController) {
 	postGroup.POST("", api.Wrap(postController.CreatePost))
 	postGroup.GET("/feed", api.Wrap(postController.GetFeed))
 	postGroup.GET("/:id", api.Wrap(postController.GetPostByID))
+	postGroup.POST("/:id/comments", api.Wrap(postController.AddComment))
 }

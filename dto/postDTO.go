@@ -58,3 +58,18 @@ type UploadPostMediaResponseDTO struct {
 	PublicID string `json:"public_id"`
 	URL      string `json:"url"`
 }
+
+type AddCommentRequestDTO struct {
+	Message string `json:"message" binding:"required"`
+	ParentCommentID *int64 `json:"parent_comment_id,omitempty"`
+}
+
+type CommentResponseDTO struct {
+	ID        int64     `json:"id"`
+	PostID    int64     `json:"post_id"`
+	UserID    int64     `json:"user_id"`
+	Message   string    `json:"message"`
+	Author    PostUserSummaryDTO `json:"author"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}

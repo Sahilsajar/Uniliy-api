@@ -74,6 +74,7 @@ type Comment struct {
 	UserID          int64
 	ParentCommentID pgtype.Int8
 	CreatedAt       pgtype.Timestamptz
+	UpdatedAt       pgtype.Timestamptz
 }
 
 type CommentLike struct {
