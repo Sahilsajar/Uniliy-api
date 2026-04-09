@@ -128,3 +128,28 @@ func (pc *PostController) GetFeed(ctx *gin.Context) error {
 	api.Success(ctx, http.StatusOK, "Post feed retrieved successfully", feed)
 	return nil
 }
+func (pc *PostController) ToggleLikePost(ctx *gin.Context) error {
+	userIDTemp, _ := ctx.Get("user_id")
+	userID := userIDTemp.(int64)
+
+	postID, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
+	if err != nil || postID <= 0 {
+		return api.BadRequest("INVALID_POST_ID", "Invalid post ID")
+	}
+
+	isLiked, err := pc.postService.ToggleLikePost(ctx.Request.Context(), userID, postID)
+	if err != nil {
+		return err
+	}
+
+	message := "Post liked successfully"
+	if !isLiked {
+		message = "Post unliked successfully"
+	}
+
+	api.Success(ctx, http.StatusOK, message, gin.H{
+		"isLiked": isLiked,
+	})
+
+	return nil
+}
