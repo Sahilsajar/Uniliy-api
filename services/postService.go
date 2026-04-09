@@ -434,6 +434,28 @@ func buildPostAuthor(userID int64, username string, name, profilePic pgtype.Text
 	}
 }
 
+func (ps *PostService) AddComment(ctx context.Context, postID, userID int64, commentBody dto.AddCommentRequestDTO) (*dto.CommentResponseDTO, error) {
+	fmt.Printf("Adding comment to post %d by user %d: %s\n", postID, userID, commentBody.Message)
+	comment, err := ps.postRepo.AddComment(ctx, postID, userID, commentBody.Message, commentBody.ParentCommentID)
+	
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, api.NotFound("POST_NOT_FOUND", "Post not found")
+		}
+		if strings.Contains(err.Error(), "invalid parent comment") {
+			return nil, api.BadRequest("INVALID_PARENT_COMMENT", "Parent comment does not exist or does not belong to the same post")
+		}
+		return nil, api.Internal("ADD_COMMENT_FAILED", "Failed to add comment").WithCause(err)
+	}
+
+	return &dto.CommentResponseDTO{
+		ID:        comment.ID,
+		PostID:    comment.PostID,
+		UserID:    comment.UserID,
+		Message:   comment.Message,
+		CreatedAt: comment.CreatedAt.Time,
+	}, nil
+}
 func (ps *PostService) ToggleLikePost(ctx context.Context, userID, postID int64) (bool, error) {
 
 	// Check post exists

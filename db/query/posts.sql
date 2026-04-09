@@ -131,6 +131,23 @@ SELECT $1, m.id, m.url
 FROM media m
 WHERE m.id = ANY($2::bigint[]);
 
+-- name: AddComment :one
+INSERT INTO comments (message, post_id, user_id, parent_comment_id)
+VALUES ($1, $2, $3, $4)
+RETURNING id, post_id, user_id, message, parent_comment_id, created_at, updated_at;
+
+-- name: GetCommentsByPostID :many
+SELECT c.id, c.post_id, c.user_id, c.message, c.parent_comment_id, c.created_at, c.updated_at, u.username, u.name, u.profile_pic
+FROM comments c
+LEFT JOIN users u ON u.id = c.user_id
+WHERE c.post_id = $1
+ORDER BY c.created_at ASC, c.id ASC;
+
+-- name: GetCommentByID :one
+SELECT c.id, c.post_id, c.user_id, c.message, c.parent_comment_id, c.created_at, c.updated_at, u.username, u.name, u.profile_pic
+FROM comments c
+LEFT JOIN users u ON u.id = c.user_id
+WHERE c.id = $1;
 
 -- name: LikePost :exec
 INSERT INTO post_likes (post_id, user_id)

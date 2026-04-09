@@ -3,7 +3,9 @@ package repositories
 import (
 	"context"
 	"errors"
+	"fmt"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	db "github.com/unilly-api/db/sqlc"
 )
@@ -184,6 +186,45 @@ func (pr *PostRepo) CreateTempMedia(ctx context.Context, publicID, url string, u
 		IsTemp:   true,
 	})
 }
+
+func (pr *PostRepo) AddComment(
+	ctx context.Context,
+	postID, userID int64,
+	message string,
+	parentCommentID *int64,
+) (db.AddCommentRow, error) {
+
+	var parentID pgtype.Int8
+
+	if parentCommentID != nil {
+		// validate parent exists
+		comment, err := pr.q.GetCommentByID(ctx, *parentCommentID)
+		if err != nil {
+			return db.AddCommentRow{}, err
+		}
+
+		// ensure same post
+		if comment.PostID != postID {
+			return db.AddCommentRow{}, fmt.Errorf("invalid parent comment")
+		}
+
+		parentID = pgtype.Int8{
+			Int64: comment.ID,
+			Valid: true,
+		}
+	} else {
+		parentID = pgtype.Int8{Valid: false}
+	}
+
+	arg := db.AddCommentParams{
+		PostID:          postID,
+		UserID:          userID,
+		Message:         message,
+		ParentCommentID: parentID,
+	}
+
+	return pr.q.AddComment(ctx, arg)
+}
 func (pr *PostRepo) LikePost(ctx context.Context, postID, userID int64) error {
 	return pr.q.LikePost(ctx, db.LikePostParams{
 		PostID: postID,
@@ -203,4 +244,5 @@ func (pr *PostRepo) CheckPostLikeExists(ctx context.Context, postID, userID int6
 		PostID: postID,
 		UserID: userID,
 	})
+
 }

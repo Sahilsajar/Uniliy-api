@@ -128,21 +128,39 @@ func (pc *PostController) GetFeed(ctx *gin.Context) error {
 	api.Success(ctx, http.StatusOK, "Post feed retrieved successfully", feed)
 	return nil
 }
-func (pc *PostController) ToggleLikePost(ctx *gin.Context) error {
-	userIDTemp, _ := ctx.Get("user_id")
-	userID := userIDTemp.(int64)
 
+// controller for add comment to post
+func (pc *PostController) AddComment(ctx *gin.Context) error {
 	postID, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
 	if err != nil || postID <= 0 {
 		return api.BadRequest("INVALID_POST_ID", "Invalid post ID")
 	}
 
-	isLiked, err := pc.postService.ToggleLikePost(ctx.Request.Context(), userID, postID)
+	userIDTemp, _ := ctx.Get("user_id")
+	userID := userIDTemp.(int64)
+
+	var req dto.AddCommentRequestDTO
+	if err := api.BindJSON(ctx, &req); err != nil {
+		return err
+	}
+	
+	comment, err := pc.postService.AddComment(ctx.Request.Context(), postID, userID, req)
+
 	if err != nil {
 		return err
 	}
 
-	message := "Post liked successfully"
+	api.Success(ctx, http.StatusCreated, "Comment added successfully", comment)
+	return nil
+}
+
+func (pc *PostController) ToggleLikePost(ctx *gin.Context) error {
+	userIDTemp, _ := ctx.Get("user_id")
+	userID := userIDTemp.(int64)
+  
+  isLiked, err := pc.postService.ToggleLikePost(ctx.Request.Context(), userID, postID)
+  
+  	message := "Post liked successfully"
 	if !isLiked {
 		message = "Post unliked successfully"
 	}
