@@ -246,3 +246,7 @@ func (pr *PostRepo) CheckPostLikeExists(ctx context.Context, postID, userID int6
 	})
 
 }
+
+func (pr *PostRepo) GetComments(ctx context.Context, postID int64) ([]db.GetCommentsByPostIDRow, error) {
+	return pr.q.GetCommentsByPostID(ctx, postID)
+}

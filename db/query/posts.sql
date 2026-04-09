@@ -137,14 +137,16 @@ VALUES ($1, $2, $3, $4)
 RETURNING id, post_id, user_id, message, parent_comment_id, created_at, updated_at;
 
 -- name: GetCommentsByPostID :many
-SELECT c.id, c.post_id, c.user_id, c.message, c.parent_comment_id, c.created_at, c.updated_at, u.username, u.name, u.profile_pic
+SELECT c.id, c.post_id, c.user_id, c.message, c.parent_comment_id, c.created_at, c.updated_at, u.username, u.name, u.profile_pic,
+    (SELECT COUNT(*)::bigint FROM comments WHERE parent_comment_id = c.id) AS replies_count
 FROM comments c
 LEFT JOIN users u ON u.id = c.user_id
-WHERE c.post_id = $1
+WHERE c.post_id = $1 AND c.parent_comment_id IS NULL
 ORDER BY c.created_at ASC, c.id ASC;
 
 -- name: GetCommentByID :one
-SELECT c.id, c.post_id, c.user_id, c.message, c.parent_comment_id, c.created_at, c.updated_at, u.username, u.name, u.profile_pic
+SELECT c.id, c.post_id, c.user_id, c.message, c.parent_comment_id, c.created_at, c.updated_at, u.username, u.name, u.profile_pic, 
+    (SELECT COUNT(*)::bigint FROM comments WHERE parent_comment_id = c.id) AS replies_count
 FROM comments c
 LEFT JOIN users u ON u.id = c.user_id
 WHERE c.id = $1;

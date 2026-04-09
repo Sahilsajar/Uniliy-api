@@ -155,10 +155,15 @@ func (pc *PostController) AddComment(ctx *gin.Context) error {
 }
 
 func (pc *PostController) ToggleLikePost(ctx *gin.Context) error {
+	postID, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
+	if err != nil || postID <= 0 {
+		return api.BadRequest("INVALID_POST_ID", "Invalid post ID")
+	}
+
 	userIDTemp, _ := ctx.Get("user_id")
 	userID := userIDTemp.(int64)
   
-  isLiked, err := pc.postService.ToggleLikePost(ctx.Request.Context(), userID, postID)
+  	isLiked, err := pc.postService.ToggleLikePost(ctx.Request.Context(), userID, postID)
   
   	message := "Post liked successfully"
 	if !isLiked {
@@ -171,3 +176,21 @@ func (pc *PostController) ToggleLikePost(ctx *gin.Context) error {
 
 	return nil
 }
+
+func (pc *PostController) GetComments(ctx *gin.Context) error {
+	postID, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
+	if err != nil || postID <= 0 {
+		return api.BadRequest("INVALID_POST_ID", "Invalid post ID")
+	}
+
+	userIDTemp, _ := ctx.Get("user_id")
+	userID := userIDTemp.(int64)
+
+	comments, err := pc.postService.GetComments(ctx.Request.Context(), postID, userID)
+	if err != nil {
+		return err
+	}
+
+	api.Success(ctx, http.StatusOK, "Comments retrieved successfully", comments)
+	return nil
+}		
