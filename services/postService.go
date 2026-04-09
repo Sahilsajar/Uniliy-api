@@ -456,3 +456,43 @@ func (ps *PostService) AddComment(ctx context.Context, postID, userID int64, com
 		CreatedAt: comment.CreatedAt.Time,
 	}, nil
 }
+func (ps *PostService) ToggleLikePost(ctx context.Context, userID, postID int64) (bool, error) {
+
+	// Check post exists
+	_, err := ps.postRepo.GetPostByID(ctx, postID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, api.NotFound("POST_NOT_FOUND", "Post not found")
+		}
+		return false, api.Internal("POST_LOOKUP_FAILED", "Failed to retrieve post").WithCause(err)
+	}
+
+	// Check already liked
+	exists, err := ps.postRepo.CheckPostLikeExists(ctx, postID, userID)
+	if err != nil {
+		return false, api.Internal("LIKE_CHECK_FAILED", "Failed to check like status").WithCause(err)
+	}
+
+	if exists {
+		// 👉 UNLIKE
+		err = ps.postRepo.UnlikePost(ctx, postID, userID)
+		if err != nil {
+			return false, api.Internal("UNLIKE_FAILED", "Failed to unlike post").WithCause(err)
+		}
+		return false, nil // false = now unliked
+	}
+
+	// 👉 LIKE
+	err = ps.postRepo.LikePost(ctx, postID, userID)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
+			if pgErr.Code == "23505" {
+				return true, nil // already liked (edge case)
+			}
+		}
+		return false, api.Internal("LIKE_FAILED", "Failed to like post").WithCause(err)
+	}
+
+	return true, nil // true = now liked
+}

@@ -225,3 +225,24 @@ func (pr *PostRepo) AddComment(
 
 	return pr.q.AddComment(ctx, arg)
 }
+func (pr *PostRepo) LikePost(ctx context.Context, postID, userID int64) error {
+	return pr.q.LikePost(ctx, db.LikePostParams{
+		PostID: postID,
+		UserID: userID,
+	})
+}
+
+func (pr *PostRepo) UnlikePost(ctx context.Context, postID, userID int64) error {
+	return pr.q.UnlikePost(ctx, db.UnlikePostParams{
+		PostID: postID,
+		UserID: userID,
+	})
+}
+
+func (pr *PostRepo) CheckPostLikeExists(ctx context.Context, postID, userID int64) (bool, error) {
+	return pr.q.CheckPostLikeExists(ctx, db.CheckPostLikeExistsParams{
+		PostID: postID,
+		UserID: userID,
+	})
+
+}

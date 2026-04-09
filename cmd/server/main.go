@@ -54,6 +54,11 @@ func main() {
 	postService := services.NewPostService(postRepo)
 	postController := controllers.NewPostController(postService)
 
+	userRepo := repositories.NewUserRepository(queries)
+	userService := services.NewUserService(userRepo)
+	userController := controllers.NewUserController(userService)
+
+	routes.UserRoutes(r, userController)
 	routes.AuthRoutes(r, authController)
 	routes.PostRoutes(r, postController)
 

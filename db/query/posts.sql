@@ -148,3 +148,17 @@ SELECT c.id, c.post_id, c.user_id, c.message, c.parent_comment_id, c.created_at,
 FROM comments c
 LEFT JOIN users u ON u.id = c.user_id
 WHERE c.id = $1;
+
+-- name: LikePost :exec
+INSERT INTO post_likes (post_id, user_id)
+VALUES ($1, $2);
+
+-- name: UnlikePost :exec
+DELETE FROM post_likes
+WHERE post_id = $1 AND user_id = $2;
+
+-- name: CheckPostLikeExists :one
+SELECT EXISTS (
+    SELECT 1 FROM post_likes
+    WHERE post_id = $1 AND user_id = $2
+);

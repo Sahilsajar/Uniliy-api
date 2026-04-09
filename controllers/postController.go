@@ -145,11 +145,29 @@ func (pc *PostController) AddComment(ctx *gin.Context) error {
 	}
 	
 	comment, err := pc.postService.AddComment(ctx.Request.Context(), postID, userID, req)
+
 	if err != nil {
 		return err
 	}
 
 	api.Success(ctx, http.StatusCreated, "Comment added successfully", comment)
 	return nil
+}
 
+func (pc *PostController) ToggleLikePost(ctx *gin.Context) error {
+	userIDTemp, _ := ctx.Get("user_id")
+	userID := userIDTemp.(int64)
+  
+  isLiked, err := pc.postService.ToggleLikePost(ctx.Request.Context(), userID, postID)
+  
+  	message := "Post liked successfully"
+	if !isLiked {
+		message = "Post unliked successfully"
+	}
+
+	api.Success(ctx, http.StatusOK, message, gin.H{
+		"isLiked": isLiked,
+	})
+
+	return nil
 }

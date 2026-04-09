@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+
 const addComment = `-- name: AddComment :one
 INSERT INTO comments (message, post_id, user_id, parent_comment_id)
 VALUES ($1, $2, $3, $4)
@@ -52,6 +53,26 @@ func (q *Queries) AddComment(ctx context.Context, arg AddCommentParams) (AddComm
 		&i.UpdatedAt,
 	)
 	return i, err
+
+}
+const checkPostLikeExists = `-- name: CheckPostLikeExists :one
+SELECT EXISTS (
+    SELECT 1 FROM post_likes
+    WHERE post_id = $1 AND user_id = $2
+)
+`
+
+type CheckPostLikeExistsParams struct {
+	PostID int64
+	UserID int64
+}
+
+func (q *Queries) CheckPostLikeExists(ctx context.Context, arg CheckPostLikeExistsParams) (bool, error) {
+	row := q.db.QueryRow(ctx, checkPostLikeExists, arg.PostID, arg.UserID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+
 }
 
 const countFeedPosts = `-- name: CountFeedPosts :one
@@ -359,6 +380,21 @@ func (q *Queries) GetPostDetailsByID(ctx context.Context, arg GetPostDetailsByID
 	return i, err
 }
 
+const likePost = `-- name: LikePost :exec
+INSERT INTO post_likes (post_id, user_id)
+VALUES ($1, $2)
+`
+
+type LikePostParams struct {
+	PostID int64
+	UserID int64
+}
+
+func (q *Queries) LikePost(ctx context.Context, arg LikePostParams) error {
+	_, err := q.db.Exec(ctx, likePost, arg.PostID, arg.UserID)
+	return err
+}
+
 const listFeedPosts = `-- name: ListFeedPosts :many
 SELECT
     p.id,
@@ -473,4 +509,19 @@ func (q *Queries) ListFeedPosts(ctx context.Context, arg ListFeedPostsParams) ([
 		return nil, err
 	}
 	return items, nil
+}
+
+const unlikePost = `-- name: UnlikePost :exec
+DELETE FROM post_likes
+WHERE post_id = $1 AND user_id = $2
+`
+
+type UnlikePostParams struct {
+	PostID int64
+	UserID int64
+}
+
+func (q *Queries) UnlikePost(ctx context.Context, arg UnlikePostParams) error {
+	_, err := q.db.Exec(ctx, unlikePost, arg.PostID, arg.UserID)
+	return err
 }
