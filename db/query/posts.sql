@@ -130,3 +130,18 @@ INSERT INTO post_images (post_id, media_id, image_url)
 SELECT $1, m.id, m.url
 FROM media m
 WHERE m.id = ANY($2::bigint[]);
+
+
+-- name: LikePost :exec
+INSERT INTO post_likes (post_id, user_id)
+VALUES ($1, $2);
+
+-- name: UnlikePost :exec
+DELETE FROM post_likes
+WHERE post_id = $1 AND user_id = $2;
+
+-- name: CheckPostLikeExists :one
+SELECT EXISTS (
+    SELECT 1 FROM post_likes
+    WHERE post_id = $1 AND user_id = $2
+);
