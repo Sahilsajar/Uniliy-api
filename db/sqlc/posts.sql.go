@@ -11,7 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-
 const addComment = `-- name: AddComment :one
 INSERT INTO comments (message, post_id, user_id, parent_comment_id)
 VALUES ($1, $2, $3, $4)
@@ -53,8 +52,8 @@ func (q *Queries) AddComment(ctx context.Context, arg AddCommentParams) (AddComm
 		&i.UpdatedAt,
 	)
 	return i, err
-
 }
+
 const checkPostLikeExists = `-- name: CheckPostLikeExists :one
 SELECT EXISTS (
     SELECT 1 FROM post_likes
@@ -72,7 +71,6 @@ func (q *Queries) CheckPostLikeExists(ctx context.Context, arg CheckPostLikeExis
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
-
 }
 
 const countFeedPosts = `-- name: CountFeedPosts :one
@@ -193,7 +191,8 @@ func (q *Queries) CreatePostTagsBulk(ctx context.Context, arg CreatePostTagsBulk
 }
 
 const getCommentByID = `-- name: GetCommentByID :one
-SELECT c.id, c.post_id, c.user_id, c.message, c.parent_comment_id, c.created_at, c.updated_at, u.username, u.name, u.profile_pic
+SELECT c.id, c.post_id, c.user_id, c.message, c.parent_comment_id, c.created_at, c.updated_at, u.username, u.name, u.profile_pic, 
+    (SELECT COUNT(*)::bigint FROM comments WHERE parent_comment_id = c.id) AS replies_count
 FROM comments c
 LEFT JOIN users u ON u.id = c.user_id
 WHERE c.id = $1
@@ -210,6 +209,7 @@ type GetCommentByIDRow struct {
 	Username        pgtype.Text
 	Name            pgtype.Text
 	ProfilePic      pgtype.Text
+	RepliesCount    int64
 }
 
 func (q *Queries) GetCommentByID(ctx context.Context, id int64) (GetCommentByIDRow, error) {
@@ -226,15 +226,17 @@ func (q *Queries) GetCommentByID(ctx context.Context, id int64) (GetCommentByIDR
 		&i.Username,
 		&i.Name,
 		&i.ProfilePic,
+		&i.RepliesCount,
 	)
 	return i, err
 }
 
 const getCommentsByPostID = `-- name: GetCommentsByPostID :many
-SELECT c.id, c.post_id, c.user_id, c.message, c.parent_comment_id, c.created_at, c.updated_at, u.username, u.name, u.profile_pic
+SELECT c.id, c.post_id, c.user_id, c.message, c.parent_comment_id, c.created_at, c.updated_at, u.username, u.name, u.profile_pic,
+    (SELECT COUNT(*)::bigint FROM comments WHERE parent_comment_id = c.id) AS replies_count
 FROM comments c
 LEFT JOIN users u ON u.id = c.user_id
-WHERE c.post_id = $1
+WHERE c.post_id = $1 AND c.parent_comment_id IS NULL
 ORDER BY c.created_at ASC, c.id ASC
 `
 
@@ -249,6 +251,7 @@ type GetCommentsByPostIDRow struct {
 	Username        pgtype.Text
 	Name            pgtype.Text
 	ProfilePic      pgtype.Text
+	RepliesCount    int64
 }
 
 func (q *Queries) GetCommentsByPostID(ctx context.Context, postID int64) ([]GetCommentsByPostIDRow, error) {
@@ -271,6 +274,7 @@ func (q *Queries) GetCommentsByPostID(ctx context.Context, postID int64) ([]GetC
 			&i.Username,
 			&i.Name,
 			&i.ProfilePic,
+			&i.RepliesCount,
 		); err != nil {
 			return nil, err
 		}

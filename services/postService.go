@@ -496,3 +496,39 @@ func (ps *PostService) ToggleLikePost(ctx context.Context, userID, postID int64)
 
 	return true, nil // true = now liked
 }
+
+func (ps *PostService) GetComments(ctx context.Context, postID, viewerUserID int64) ([]dto.CommentResponseDTO, error) {
+	// Check post exists
+	_, err := ps.postRepo.GetPostByID(ctx, postID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, api.NotFound("POST_NOT_FOUND", "Post not found")
+		}
+		return nil, api.Internal("POST_LOOKUP_FAILED", "Failed to retrieve post").WithCause(err)
+	}
+
+	comments, err := ps.postRepo.GetComments(ctx, postID)			
+	if err != nil {
+		return nil, api.Internal("COMMENTS_LOOKUP_FAILED", "Failed to retrieve comments").WithCause(err)
+	}
+
+	commentDTOs := make([]dto.CommentResponseDTO, 0, len(comments))
+	for _, comment := range comments {
+		commentDTOs = append(commentDTOs, dto.CommentResponseDTO{
+			ID:        comment.ID,
+			PostID:    comment.PostID,
+			UserID:    comment.UserID,
+			Message:   comment.Message,
+			CreatedAt: comment.CreatedAt.Time,
+			Author: dto.PostUserSummaryDTO{
+				ID: comment.UserID,
+				Name: comment.Name.String,
+				Username: comment.Username.String,
+				ProfilePic: comment.ProfilePic.String,
+			},
+			RepliesCount: comment.RepliesCount,
+		})
+	}
+
+	return commentDTOs, nil
+}	

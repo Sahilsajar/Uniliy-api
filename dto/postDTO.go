@@ -72,4 +72,5 @@ type CommentResponseDTO struct {
 	Author    PostUserSummaryDTO `json:"author"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+	RepliesCount int64     `json:"replies_count"`
 }
